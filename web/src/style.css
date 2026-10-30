@@ -1,0 +1,17 @@
+:root { font-family: system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif; color: #1f2937; background: #f3f4f6; }
+body { margin: 0; }
+header { display: flex; gap: 16px; align-items: center; padding: 10px 20px; background: #111827; color: #fff; }
+header span { margin-left: auto; font-size: 14px; }
+main { max-width: 1000px; margin: 0 auto; padding: 16px 20px; }
+.card { background: #fff; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0, 0, 0, .1); }
+.login { max-width: 360px; margin: 80px auto; display: grid; gap: 12px; }
+label { display: grid; gap: 4px; font-size: 14px; }
+input { padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 16px; }
+button { padding: 8px 14px; border: 0; border-radius: 4px; background: #2563eb; color: #fff; font-size: 14px; cursor: pointer; }
+button:disabled { opacity: .6; }
+.error { color: #b91c1c; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.tile { display: grid; gap: 6px; }
+.tile span { font-size: 13px; color: #6b7280; }
+.tile strong { font-size: 22px; }
+.tile.warn strong { color: #b91c1c; }
