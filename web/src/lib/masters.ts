@@ -1,6 +1,7 @@
 // マスタ画面の項目定義。DBの制約（check）と同じ選択肢にしてある。
 export type Field = {
   key: string;
+  bool?: boolean; // select の選択肢 "true"/"false" を、真偽値として送る
   label: string;
   type?: "text" | "textarea" | "select" | "email";
   options?: [string, string][]; // [値, 表示]
@@ -25,7 +26,8 @@ export const customers: MasterDef = {
     { key: "code", label: "コード", list: true },
     { key: "name", label: "会社名", required: true, list: true },
     { key: "name_kana", label: "フリガナ" },
-    { key: "contact_name", label: "担当者", list: true },
+    { key: "contact_name", label: "担当者名", list: true },
+    { key: "department", label: "担当部署名", list: true },
     { key: "postal_code", label: "郵便番号" },
     { key: "address", label: "住所" },
     { key: "tel", label: "電話", list: true },
@@ -40,6 +42,9 @@ export const customers: MasterDef = {
     { key: "invoice_mail_cc", label: "請求書メール CC" },
     { key: "delivery_mail_to", label: "納品書メール TO", type: "email" },
     { key: "delivery_mail_cc", label: "納品書メール CC" },
+    { key: "show_address", label: "帳票に住所を表示（既定）", type: "select", bool: true, options: [["true", "表示する"], ["false", "表示しない（メール送付など）"]] },
+    { key: "show_department", label: "帳票に担当部署名を表示（既定）", type: "select", bool: true, options: [["true", "表示する"], ["false", "表示しない"]] },
+    { key: "show_contact", label: "帳票に担当者名を表示（既定）", type: "select", bool: true, options: [["true", "表示する"], ["false", "表示しない"]] },
     { key: "notes", label: "備考", type: "textarea" },
   ],
 };

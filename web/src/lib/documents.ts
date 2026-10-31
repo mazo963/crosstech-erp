@@ -13,7 +13,7 @@ export type DocContent = {
   doc_type: DocType; doc_no: string; doc_date: string; title?: string; notes?: string | null; due_date?: string | null;
   project_no?: string; customer_po_no?: string | null;
   issuer: { company_name: string; invoice_reg_no: string | null; postal_code: string | null; address: string | null; tel: string | null; email: string | null };
-  customer: { id: string; name: string; postal_code: string | null; address: string | null; contact_name: string | null };
+  customer: { id: string; name: string; postal_code: string | null; address: string | null; contact_name: string | null; department?: string | null };
   lines: DocLine[]; subtotal: number; tax?: number; total?: number;
   tax_breakdown?: { rate: number; reduced: boolean; base: number; tax: number }[];
   official?: boolean; mf_invoice_no?: string | null; bank_info?: string | null; period_from?: string | null; period_to?: string | null;

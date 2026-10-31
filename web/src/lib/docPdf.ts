@@ -126,6 +126,7 @@ async function build(c: DocContent, meta: PdfMeta, fontBytes: Uint8Array): Promi
   let ly = top + 24;
   const left = (s: string) => { for (const l of wrap(s, 9, (MR - ML) / 2 - 10)) { draw(l, ML, 9, { yy: ly }); ly += 13; } };
   if (c.customer.address) left(`${c.customer.postal_code ? `〒${c.customer.postal_code} ` : ""}${c.customer.address}`);
+  if (c.customer.department || c.customer.contact_name) left([c.customer.department, c.customer.contact_name && `${c.customer.contact_name} 様`].filter(Boolean).join("　"));
   if (c.title) left(`件名: ${c.title}`);
   if (c.customer_po_no) left(`客先注文番号: ${c.customer_po_no}`);
   if (c.period_to) left(`対象期間: ${c.period_from ?? "初回"} 〜 ${c.period_to}`);

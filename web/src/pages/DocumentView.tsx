@@ -22,6 +22,7 @@ export function DocumentView({ doc, preview = false }: { doc: IssuedDoc; preview
         <div>
           <p className="to">{c.customer.name} 御中</p>
           {c.customer.address && <p>{c.customer.postal_code && `〒${c.customer.postal_code} `}{c.customer.address}</p>}
+          {(c.customer.department || c.customer.contact_name) && <p>{[c.customer.department, c.customer.contact_name && `${c.customer.contact_name} 様`].filter(Boolean).join("　")}</p>}
           {c.title && <p>件名: {c.title}</p>}
           {c.customer_po_no && <p>客先注文番号: {c.customer_po_no}</p>}
           {c.period_to && <p>対象期間: {c.period_from ?? "初回"} 〜 {c.period_to}</p>}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { yen } from "../lib/format";
 import { IssueButton } from "./IssueButton";
+import { AddresseeEditor } from "./AddresseeEditor";
 import { DocPreview } from "./DocPreview";
 
 type Inv = {
@@ -19,6 +20,7 @@ export function InvoiceDetail({ id, canWrite, onBack }: { id: string; canWrite: 
   const [inv, setInv] = useState<Inv | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [sums, setSums] = useState<Sum[]>([]);
+  const [addrRev, setAddrRev] = useState(0);
   const [mfNo, setMfNo] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -88,7 +90,8 @@ export function InvoiceDetail({ id, canWrite, onBack }: { id: string; canWrite: 
     <aside className="split-side">
       <div className="card stack">
         <p className="inactive">請求書の発行イメージ{inv.status === "draft" ? "（下書き。発行済みにしてから、帳票として発行・固定します）" : "（現在の内容。固定した帳票は「帳票」タブ）"}</p>
-        <DocPreview type="invoice" sourceId={id} rev={inv.total + inv.status.length} />
+        <AddresseeEditor type="invoice" sourceId={id} canWrite={canWrite} rev={addrRev} onSaved={() => setAddrRev((n) => n + 1)} />
+        <DocPreview type="invoice" sourceId={id} rev={inv.total + inv.status.length + addrRev} />
       </div>
     </aside>
     </div>

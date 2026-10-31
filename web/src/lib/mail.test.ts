@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { boxMail, cleanAddrs, customerAddrs, customerMail, mailto } from "./mail.ts";
 
 const c = { doc_type: "invoice", doc_no: "INV2610-0001", doc_date: "2026-10-31", title: "プレート加工", due_date: "2026-11-30",
-  issuer: { company_name: "株式会社クロステック" }, customer: { name: "株式会社テスト精機" } } as never;
+  issuer: { company_name: "株式会社クロステック" }, customer: { name: "株式会社テスト精機", department: "購買部", contact_name: "山田" } } as never;
 
 test("宛先の整形と、書類ごとの宛先の選び方", () => {
   assert.equal(cleanAddrs(" a@x.jp; b@x.jp、c@x.jp  d@x.jp "), "a@x.jp,b@x.jp,c@x.jp,d@x.jp");
@@ -21,7 +21,7 @@ test("mailto: 宛先・CC・件名・本文（改行はCRLF）が正しく符号
   const q = new URLSearchParams(url.split("?")[1]);
   assert.equal(q.get("subject"), "【請求書】INV2610-0001／株式会社クロステック");
   const text = q.get("body")!;
-  assert.ok(text.includes("株式会社テスト精機 御中\r\n") && text.includes("・金額: ¥14,665（税込）") && text.includes("・お支払期日: 2026-11-30") && text.includes("署名の行\r\n電話 03-0000-0000"));
+  assert.ok(text.includes("株式会社テスト精機 御中\r\n購買部　山田 様\r\n") && text.includes("・金額: ¥14,665（税込）") && text.includes("・お支払期日: 2026-11-30") && text.includes("署名の行\r\n電話 03-0000-0000"));
   assert.ok(url.length < 1800, `長さ ${url.length}`);
 });
 

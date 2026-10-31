@@ -8,7 +8,7 @@ export function toPayload(fields: Field[], form: Record<string, string>, active:
   const out: Record<string, string | number | boolean | null> = { active };
   for (const f of fields) {
     const v = (form[f.key] ?? "").trim();
-    out[f.key] = v === "" ? null : f.numeric ? Number(v) : v;
+    out[f.key] = v === "" ? null : f.bool ? v === "true" : f.numeric ? Number(v) : v;
   }
   return out;
 }

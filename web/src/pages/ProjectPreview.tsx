@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { AddresseeEditor } from "./AddresseeEditor";
 import { DocPreview } from "./DocPreview";
 import { IssueButton } from "./IssueButton";
 
@@ -9,6 +10,7 @@ type Dv = { id: string; delivery_no: string };
 export function ProjectPreview({ projectId, rev, canWrite }: { projectId: string; rev: number; canWrite: boolean }) {
   const [deliveries, setDeliveries] = useState<Dv[]>([]);
   const [sel, setSel] = useState<string>("quote");
+  const [local, setLocal] = useState(0); // 宛先を保存したら、発行イメージを更新する
 
   useEffect(() => {
     supabase.from("v_delivery_list").select("id, delivery_no").eq("project_id", projectId).eq("voided", false).order("delivered_on")
@@ -28,7 +30,8 @@ export function ProjectPreview({ projectId, rev, canWrite }: { projectId: string
         {canWrite && <IssueButton type={type} sourceId={sourceId} label="発行して固定・表示" />}
       </div>
       <p className="inactive">発行イメージ（保存済みの内容）。発行すると内容が固定され、印刷・PDF保存・交付の記録ができます。</p>
-      <DocPreview type={type} sourceId={sourceId} rev={rev} />
+      <AddresseeEditor type={type} sourceId={sourceId} projectId={projectId} canWrite={canWrite} rev={rev + local} onSaved={() => setLocal((n) => n + 1)} />
+      <DocPreview type={type} sourceId={sourceId} rev={rev + local} />
     </div>
   );
 }

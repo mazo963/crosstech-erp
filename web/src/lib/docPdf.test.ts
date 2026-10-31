@@ -11,7 +11,7 @@ import { makeDocPdf, pdfFileName, jst } from "./docPdf.ts";
 
 const font = new Uint8Array(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../public/fonts/CrosstechSansJP-Regular.ttf")));
 const issuer = { company_name: "株式会社クロステック", invoice_reg_no: "T1234567890123", postal_code: "000-0000", address: "東京都千代田区1-2-3", tel: "03-1111-2222", email: null };
-const customer = { id: "c1", name: "株式会社髙橋精機", postal_code: null, address: "神奈川県川崎市", contact_name: null };
+const customer = { id: "c1", name: "株式会社髙橋精機", postal_code: "210-0001", address: "神奈川県川崎市1-1", department: "購買部", contact_name: "山田" };
 const meta = { version: 2, issued_at: "2026-10-31T01:23:00Z", content_sha256: "ab12cd34ef56".padEnd(64, "0"), voided: false, void_reason: null };
 const invoice = {
   doc_type: "invoice", doc_no: "INV2610-0001", doc_date: "2026-10-31", official: true, mf_invoice_no: null, bank_info: "○○銀行 △△支店 普通 1234567 カ）クロステック", due_date: "2026-11-30", period_from: null, period_to: "2026-10-31",
@@ -43,7 +43,7 @@ test("請求書: 日本語・税率別の内訳が入り、同じ内容なら毎
   assert.equal(new TextDecoder("latin1").decode(a.bytes.slice(0, 5)), "%PDF-");
   if (hasPoppler) {
     const { out } = text(a.bytes);
-    for (const s of ["請 求 書", "株式会社髙橋精機 御中", "ご請求金額 ¥14,689（税込）", "10%対象", "8%対象（※軽減税率） ¥1,500", "1%対象（※軽減税率） ¥2,000", "合計 ¥14,689", "お振込先", "登録番号 T1234567890123", "発行 2026-10-31 10:23", "※は軽減税率の対象品目です"]) {
+    for (const s of ["請 求 書", "株式会社髙橋精機 御中", "〒210-0001 神奈川県川崎市1-1", "購買部 山田 様", "ご請求金額 ¥14,689（税込）", "10%対象", "8%対象（※軽減税率） ¥1,500", "1%対象（※軽減税率） ¥2,000", "合計 ¥14,689", "お振込先", "登録番号 T1234567890123", "発行 2026-10-31 10:23", "※は軽減税率の対象品目です"]) {
       assert.ok(out!.replace(/[ 　]+/g, " ").includes(s.replace(/[ 　]+/g, " ")), `見つからない: ${s}\n${out}`);
     }
   }
@@ -79,6 +79,15 @@ test("明細が多いと複数ページになり、フォントが埋め込ま�
     assert.match(fonts, /CrosstechSansJP/);
     assert.match(fonts, /CID TrueType\s+Identity-H\s+yes/); // 埋め込み済み（部分埋め込みは、サイズが小さいことで確認）
     assert.ok(r.bytes.length < 300_000, `サイズ ${r.bytes.length}`);
+  }
+});
+
+test("宛先の項目を表示しない設定のとき、住所・部署・担当者はPDFに出ない（会社名だけ）", async () => {
+  const hidden = { ...(invoice as object), customer: { id: "c1", name: "株式会社髙橋精機", postal_code: null, address: null, department: null, contact_name: null } } as never;
+  const r = await makeDocPdf(hidden, meta, font);
+  if (hasPoppler) {
+    const t = text(r.bytes).out!;
+    assert.ok(t.includes("株式会社髙橋精機 御中") && !t.includes("神奈川") && !t.includes("購買部") && !t.includes("山田") && !t.includes("様"));
   }
 });
 

@@ -27,7 +27,8 @@ export function customerMail(c: DocContent, amount: number, pdfName: string, sig
   const label = DOC_LABEL[c.doc_type];
   const company = c.issuer.company_name;
   const lines = [
-    `${c.customer.name} 御中`, "",
+    `${c.customer.name} 御中`,
+    ...(c.customer.department || c.customer.contact_name ? [[c.customer.department, c.customer.contact_name && `${c.customer.contact_name} 様`].filter(Boolean).join("　")] : []), "",
     "いつもお世話になっております。", `${company}です。`,
     `${label}をお送りします。ご確認をお願いいたします。`, "",
     `・${label}番号: ${c.doc_no}`,
