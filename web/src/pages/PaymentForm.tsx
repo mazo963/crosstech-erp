@@ -14,6 +14,8 @@ export function PaymentForm({ balances, onDone }: { balances: Bal[]; onDone: () 
   const [fee, setFee] = useState("0");
   const [method, setMethod] = useState("bank");
   const [memo, setMemo] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [accountNo, setAccountNo] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bal = balances.find((b) => b.customer_id === customerId);
@@ -24,11 +26,11 @@ export function PaymentForm({ balances, onDone }: { balances: Bal[]; onDone: () 
     setError(null);
     const { error } = await supabase.rpc("record_payment", {
       p_customer_id: customerId, p_received_on: date, p_amount: Number(amount), p_fee: Number(fee || 0),
-      p_method: method, p_memo: memo.trim() || null,
+      p_method: method, p_memo: memo.trim() || null, p_bank_name: bankName.trim() || null, p_account_no: accountNo.trim() || null,
     });
     setBusy(false);
     if (error) return setError(error.message);
-    setAmount(""); setFee("0"); setMemo("");
+    setAmount(""); setFee("0"); setMemo(""); setBankName(""); setAccountNo("");
     onDone();
   }
 
@@ -51,6 +53,12 @@ export function PaymentForm({ balances, onDone }: { balances: Bal[]; onDone: () 
           <select value={method} onChange={(e) => setMethod(e.target.value)}>
             {METHODS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
           </select>
+        </label>
+        <label>入金銀行{method === "bank" && " *"}
+          <input value={bankName} onChange={(e) => setBankName(e.target.value)} required={method === "bank"} placeholder="例: ○○銀行 △△支店" />
+        </label>
+        <label>口座番号{method === "bank" && " *"}
+          <input value={accountNo} onChange={(e) => setAccountNo(e.target.value)} required={method === "bank"} inputMode="numeric" />
         </label>
         <label>メモ<input value={memo} onChange={(e) => setMemo(e.target.value)} /></label>
       </div>

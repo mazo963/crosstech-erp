@@ -56,9 +56,54 @@ end $$;
 
 select issue_invoice(:'inv');
 -- 振込手数料 660円差引で入金
-select record_payment((select id from customers where name='テスト精機'), '2026-11-30', 14004, 660);
+-- 銀行振込は入金銀行・口座番号が必須
+do $$ begin
+  perform record_payment((select id from customers where name='テスト精機'), '2026-11-30', 14004, 660);
+  raise exception 'NG: 銀行情報なしの振込入金が通った';
+exception when others then
+  if sqlerrm like 'NG:%' then raise; end if;
+  raise notice 'OK 銀行情報なしの振込入金を拒否: %', sqlerrm;
+end $$;
+select record_payment((select id from customers where name='テスト精機'), '2026-11-30', 14004, 660, 'bank', null, 'テスト銀行 本店', '1234567') as pay \gset
 select invoice_no, total, allocated, balance, overdue from v_invoice_balance;
 select customer_name, ar_balance, unallocated_payment, unbilled_amount from v_customer_balance;
+
+-- 入金済みの請求書は取消できない
+do $$ begin
+  perform void_invoice((select id from invoices limit 1), 'テスト');
+  raise exception 'NG: 入金消込済み請求書の取消が通った';
+exception when others then
+  if sqlerrm like 'NG:%' then raise; end if;
+  raise notice 'OK 入金消込済み請求書の取消を拒否: %', sqlerrm;
+end $$;
+-- 入金の取消: 理由必須・残高が戻る・二重取消不可・行は残る
+do $$ begin
+  perform void_payment((select id from payments where not voided limit 1), '  ');
+  raise exception 'NG: 理由なしの入金取消が通った';
+exception when others then
+  if sqlerrm like 'NG:%' then raise; end if;
+  raise notice 'OK 理由なしの入金取消を拒否: %', sqlerrm;
+end $$;
+select void_payment(:'pay', '二重入力');
+do $$ declare v_bal numeric; v_un numeric; v_cnt int; begin
+  select balance into v_bal from v_invoice_balance limit 1;
+  select unallocated_payment into v_un from v_customer_balance where customer_name='テスト精機';
+  select count(*) into v_cnt from payments where voided;
+  if v_bal <> 14665 then raise exception 'NG: 取消後の残高が戻らない (%)', v_bal; end if;
+  if v_un <> 0 then raise exception 'NG: 取消後に前受が残っている (%)', v_un; end if;
+  if v_cnt <> 1 then raise exception 'NG: 取消した入金の行が残っていない'; end if;
+  raise notice 'OK 入金取消で残高が戻り、入金の行は残る（残高 %）', v_bal;
+end $$;
+do $$ begin
+  perform void_payment((select id from payments where voided limit 1), '再取消');
+  raise exception 'NG: 二重取消が通った';
+exception when others then
+  if sqlerrm like 'NG:%' then raise; end if;
+  raise notice 'OK 二重取消を拒否: %', sqlerrm;
+end $$;
+-- 取消した入金で請求書の取消が可能になり、入金し直すと再び消し込まれる
+select record_payment((select id from customers where name='テスト精機'), '2026-12-01', 14665, 0, 'bank', null, 'テスト銀行 本店', '1234567');
+select invoice_no, total, allocated, balance from v_invoice_balance;
 
 -- 全数完納の得意先: 一部納品だけでは請求対象にならない
 insert into public.projects (customer_id, title, status) select id, '金型部品', 'ordered' from customers where name='完納工業';

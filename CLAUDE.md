@@ -58,12 +58,13 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
   - 02 関数：採番（`CRO2610xx` / `DN2610-0001` / `INV2610-0001`）、分納（`record_delivery`）、納品取消、締め請求（`create_invoice`）、発行・取消、入金の自動消込（`record_payment`）、支払期日・締め期間の計算
   - 03 ビュー：品目進捗、未請求の納品行、案件サマリ（粗利・進捗）、請求残高、得意先残高、ダッシュボード
   - 04 RLS：admin / office / viewer。スタッフ未登録のユーザーと anon は業務データに触れない
-- [x] 業務シナリオテスト（`scripts/test_scenario.sql`）全項目合格（2026-10-30）
+- [x] 05 入金の銀行情報・取消（`20261031000005`）：`payments` に入金銀行・口座番号・取消の列、`record_payment` を銀行振込で銀行・口座必須に作り直し、`void_payment` を追加。残高ビューは取消済み入金を除外。ローカルのシナリオテスト全項目合格（2026-10-31）
+- [x] 業務シナリオテスト（`scripts/test_scenario.sql`）全項目合格（2026-10-30。入金取消の項目を追加）
 
 ### 残作業（この順で進める）
 1. [x] **Edge Function `ai-extract`**（実装・単体テスト合格 2026-10-30。Deno/Supabase 上での実機確認は未）：メール本文 / 注文書PDF → 案件下書きJSON。Anthropic Messages API を tool use で構造化出力。モデルは環境変数 `AI_MODEL_DEFAULT`（Haiku）/ `AI_MODEL_ADVANCED`（Sonnet）で切替（モデルIDはコードに直書きしない）。`ai_extractions` にトークン数を記録し、`AI_MONTHLY_TOKEN_LIMIT` 超過で停止。ユーザーのJWTでDBに接続し、RLSを効かせる
 2. [x] **Edge Function `juchu-sync`**（実装・単体テスト合格 2026-10-30。実GASのJSON形式・Supabase上での確認は未）：受注GASの doGet（受注JSON配列）を取得 → `items[].productNo` で照合 → `project_items.juchu_completed_at / juchu_shipped_date / juchu_synced_at` を更新。GAS URL は Supabase の secret `JUCHU_GAS_URL`。受注側へは書き込まない
-3. [ ] **画面 `web/`**（ログイン・スタッフ確認・ダッシュボード・得意先/外注先マスタ・案件（品目行・AI取込）・分納記録・締め請求（作成/発行/取消）・入金登録まで実装、ビルド成功 2026-10-30。以下の残りは未実装）：ログイン（Supabase Auth。固定の admin/crosstech は使わない）、ダッシュボード、得意先・外注先マスタ、案件（品目行・AI取込ボタン）、分納記録、締め請求の作成・発行、入金登録、帳票印刷（見積書・納品書・請求書）、メール作成（mailto でTO/CC/件名/本文を自動入力）、設定（自社情報・スタッフ）
+3. [ ] **画面 `web/`**（ログイン・スタッフ確認・ダッシュボード・得意先/外注先マスタ・案件（品目行・AI取込）・分納記録・締め請求（作成/発行/取消）・入金登録（銀行・口座番号、取消）まで実装、ビルド成功 2026-10-30。以下の残りは未実装）：ログイン（Supabase Auth。固定の admin/crosstech は使わない）、ダッシュボード、得意先・外注先マスタ、案件（品目行・AI取込ボタン）、分納記録、締め請求の作成・発行、入金登録、帳票印刷（見積書・納品書・請求書）、メール作成（mailto でTO/CC/件名/本文を自動入力）、設定（自社情報・スタッフ）
 4. [ ] **GitHub Actions**：
    - CI：PostgreSQL サービスで §5 のテストを実行、`web/` のビルド
    - デプロイ：`web/` の静的ビルド
