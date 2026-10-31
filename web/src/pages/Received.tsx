@@ -8,6 +8,7 @@ import { TimestampStatus } from "./TimestampStatus";
 type Row = {
   id: string; kind: string; doc_category: string; doc_date: string; amount: number; counterparty_name: string; received_on: string;
   file_name: string; input_timeliness: string; deadline_max: string; resolution_dpi: number | null; voided: boolean; void_reason: string | null;
+  importance: string; paper_original_required: boolean;
 };
 const TIMELINESS: Record<string, string> = { early: "7営業日以内", cycle: "2か月+7営業日以内", late: "期限超過" };
 
@@ -18,12 +19,13 @@ export function Received({ canWrite }: { canWrite: boolean }) {
   const [f, setF] = useState({ kind: "", cat: "", from: "", to: "", min: "", max: "", name: "", voided: false });
   const [adding, setAdding] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [unlinked, setUnlinked] = useState<Set<string>>(new Set());
   const [tick, setTick] = useState(0);
   const set = (k: keyof typeof f, v: string | boolean) => setF((p) => ({ ...p, [k]: v }));
 
   const load = useCallback(async () => {
     let q = supabase.from("received_documents")
-      .select("id, kind, doc_category, doc_date, amount, counterparty_name, received_on, file_name, input_timeliness, deadline_max, resolution_dpi, voided, void_reason")
+      .select("id, kind, doc_category, doc_date, amount, counterparty_name, received_on, file_name, input_timeliness, deadline_max, resolution_dpi, voided, void_reason, importance, paper_original_required")
       .order("doc_date", { ascending: false }).limit(200);
     if (f.kind) q = q.eq("kind", f.kind);
     if (f.cat) q = q.eq("doc_category", f.cat);
@@ -33,7 +35,9 @@ export function Received({ canWrite }: { canWrite: boolean }) {
     if (f.max) q = q.lte("amount", Number(f.max));
     if (f.name.trim()) q = q.ilike("counterparty_name", `%${f.name.trim()}%`);
     if (!f.voided) q = q.eq("voided", false);
-    const [r, s] = await Promise.all([q, supabase.from("v_timestamp_status").select("subject_id, status").eq("subject_table", "received_documents")]);
+    const [r, s, u] = await Promise.all([q, supabase.from("v_timestamp_status").select("subject_id, status").eq("subject_table", "received_documents"),
+      supabase.from("v_received_unlinked").select("id")]);
+    setUnlinked(new Set(((u.data as { id: string }[]) ?? []).map((x) => x.id)));
     if (r.error) return setMsg(r.error.message);
     setRows(r.data as Row[]);
     setTs(Object.fromEntries(((s.data as { subject_id: string; status: string }[]) ?? []).map((x) => [x.subject_id, x.status])));
@@ -48,6 +52,13 @@ export function Received({ canWrite }: { canWrite: boolean }) {
     a.download = r.file_name;
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+  async function link(r: Row) {
+    const ref = window.prompt(`${r.counterparty_name} ${r.file_name} に関連する帳簿の伝票番号を入力してください（追記のみ・後から変更できません）`);
+    if (!ref?.trim()) return;
+    const { error } = await supabase.from("received_document_links").insert({ received_id: r.id, ref: ref.trim() });
+    setMsg(error?.message ?? null);
+    if (!error) setTick((t) => t + 1);
   }
   async function voidIt(r: Row) {
     const reason = window.prompt(`${r.counterparty_name} ${r.file_name} を取り消します。取消理由を入力してください（登録し直す場合に使います）`);
@@ -81,10 +92,10 @@ export function Received({ canWrite }: { canWrite: boolean }) {
               <tr key={r.id} className={r.voided ? "inactive" : ""}>
                 <td>{r.doc_date}</td><td>{r.counterparty_name}{r.voided && `（取消: ${r.void_reason}）`}</td>
                 <td>{CATEGORY.find(([v]) => v === r.doc_category)?.[1]}</td><td>{yen(r.amount)}</td>
-                <td>{r.kind === "scanned" ? `スキャン ${r.resolution_dpi}dpi` : "電子取引"}</td><td>{r.received_on}</td>
-                <td className={r.input_timeliness === "late" ? "error" : ""}>{TIMELINESS[r.input_timeliness]}</td>
+                <td>{r.kind === "scanned" ? `スキャン ${r.resolution_dpi}dpi` : "電子取引"}{unlinked.has(r.id) && <span className="error"> 帳簿未紐づけ</span>}</td><td>{r.received_on}</td>
+                <td className={r.paper_original_required ? "error" : ""}>{r.kind === "electronic" ? "-" : r.paper_original_required ? "期限超過: 紙の原本を保存" : r.importance === "general" ? "一般書類（期間の制限なし）" : TIMELINESS[r.input_timeliness]}</td>
                 <td className={ts[r.id] === "overdue" ? "error" : ""}>{TS_STATUS[ts[r.id]] ?? "-"}</td>
-                <td><button className="secondary" onClick={() => download(r)}>表示</button>{canWrite && !r.voided && <button className="secondary" onClick={() => voidIt(r)}>取消</button>}</td>
+                <td><button className="secondary" onClick={() => download(r)}>表示</button>{canWrite && !r.voided && unlinked.has(r.id) && <button className="secondary" onClick={() => link(r)}>紐づけ</button>}{canWrite && !r.voided && <button className="secondary" onClick={() => voidIt(r)}>取消</button>}</td>
               </tr>
             ))}
             {rows.length === 0 && <tr><td colSpan={9}>該当する書類がありません（最大200件）</td></tr>}

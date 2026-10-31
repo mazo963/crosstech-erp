@@ -20,6 +20,7 @@ export function ReceivedForm({ onDone, onCancel }: { onDone: (message: string) =
   const [error, setError] = useState<string | null>(null);
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
   const scanned = f.kind === "scanned";
+  const important = f.doc_category !== "quote" && f.doc_category !== "order"; // 見積書・注文書は一般書類、それ以外は重要書類（スキャナ保存 問10）
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,7 +32,7 @@ export function ReceivedForm({ onDone, onCancel }: { onDone: (message: string) =
       kind: f.kind, doc_category: f.doc_category, doc_date: f.doc_date, amount: Number(f.amount), counterparty_name: f.counterparty_name,
       related_ref: f.related_ref, received_on: f.received_on, file_name: file.name, mime_type: file.type,
       ...(scanned
-        ? { scanned_on: f.scanned_on, resolution_dpi: Number(f.resolution_dpi), color_mode: f.color_mode, page_size: f.page_size, page_count: Number(f.page_count) }
+        ? { scanned_on: f.scanned_on, resolution_dpi: Number(f.resolution_dpi), color_mode: important ? "color" : f.color_mode, page_size: f.page_size, page_count: Number(f.page_count) }
         : { channel: f.channel }),
     };
     const { data, error } = await supabase.rpc("register_received_document", { p_meta: meta, p_base64: await toBase64(file) });
@@ -54,20 +55,20 @@ export function ReceivedForm({ onDone, onCancel }: { onDone: (message: string) =
         <label>取引金額（税込・円） *<input type="number" step="1" value={f.amount} onChange={(e) => set("amount", e.target.value)} required /></label>
         <label>取引先 *<input value={f.counterparty_name} onChange={(e) => set("counterparty_name", e.target.value)} required /></label>
         <label>授受日（受け取った日） *<input type="date" value={f.received_on} onChange={(e) => set("received_on", e.target.value)} required /></label>
-        <label>関連する伝票・メモ<input value={f.related_ref} onChange={(e) => set("related_ref", e.target.value)} placeholder="外注仕入の請求書番号など" /></label>
+        <label>関連する帳簿の伝票番号<input value={f.related_ref} onChange={(e) => set("related_ref", e.target.value)} placeholder="外注仕入の請求書番号など。未作成なら後から紐づけ" /></label>
         {!scanned && <label>受け取った方法 *<select value={f.channel} onChange={(e) => set("channel", e.target.value)}>{CHANNEL.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></label>}
         {scanned && (
           <>
             <label>読み取った日 *<input type="date" value={f.scanned_on} onChange={(e) => set("scanned_on", e.target.value)} required /></label>
             <label>解像度（dpi・200以上） *<input type="number" min="200" value={f.resolution_dpi} onChange={(e) => set("resolution_dpi", e.target.value)} required /></label>
-            <label>色 *<select value={f.color_mode} onChange={(e) => set("color_mode", e.target.value)}><option value="color">カラー</option><option value="grayscale">グレースケール</option><option value="mono">白黒2値（不可）</option></select></label>
+            <label>色 *<select value={important ? "color" : f.color_mode} onChange={(e) => set("color_mode", e.target.value)} disabled={important}><option value="color">カラー（24ビット）</option>{!important && <option value="grayscale">グレースケール（一般書類のみ）</option>}</select></label>
             <label>用紙サイズ<input value={f.page_size} onChange={(e) => set("page_size", e.target.value)} /></label>
             <label>ページ数 *<input type="number" min="1" value={f.page_count} onChange={(e) => set("page_count", e.target.value)} required /></label>
           </>
         )}
         <label>ファイル *<input type="file" accept={scanned ? "application/pdf,image/png,image/jpeg,image/tiff" : undefined} onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
       </div>
-      {scanned && <p className="inactive">読取装置の設定値（解像度・色）を入力してください。条件を満たさない読取は登録できません。原本の廃棄は、登録とタイムスタンプの付与を確認してから行ってください。</p>}
+      {scanned && <p className="inactive">重要書類（契約書・納品書・請求書・領収書など）はカラー（24ビット）・200dpi以上で読み取り、授受日から7営業日以内（事務処理規程があれば最長2か月＋7営業日以内）に登録してください。重要書類は、関連する帳簿への紐づけが必要です（帳簿が未作成なら、作成後に一覧から紐づけます）。期間を過ぎた重要書類は、紙の原本を保存し続ける必要があります。見積書・注文書などの一般書類はグレースケールも可です。原本の廃棄は、登録とタイムスタンプの付与を確認してから行ってください。</p>}
       {error && <p className="error">{error}</p>}
       <div className="row"><button disabled={busy}>{busy ? "登録中…" : "登録"}</button><button type="button" className="secondary" onClick={onCancel}>キャンセル</button></div>
     </form>

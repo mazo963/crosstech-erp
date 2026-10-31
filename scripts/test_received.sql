@@ -15,6 +15,15 @@ do $$ begin
   raise notice 'OK 営業日の加算（土日を除く）';
 end $$;
 
+-- 暦の2か月（国税庁 電子取引 問62: 4月21日に受領 → 最長2か月は6月20日。応当日がなければ月末日）
+do $$ begin
+  if public.calendar_two_months_end('2026-04-21') <> '2026-06-20' then raise exception 'NG: 4/21 → %', public.calendar_two_months_end('2026-04-21'); end if;
+  if public.calendar_two_months_end('2026-12-31') <> '2027-02-28' then raise exception 'NG: 12/31 → %', public.calendar_two_months_end('2026-12-31'); end if;
+  if public.calendar_two_months_end('2027-12-31') <> '2028-02-29' then raise exception 'NG: うるう年 12/31 → %', public.calendar_two_months_end('2027-12-31'); end if;
+  if public.calendar_two_months_end('2026-01-30') <> '2026-03-29' then raise exception 'NG: 1/30 → %', public.calendar_two_months_end('2026-01-30'); end if;
+  raise notice 'OK 暦の2か月の計算（応当日の前日、応当日がなければ月末日）';
+end $$;
+
 -- 電子取引で受け取った請求書
 select register_received_document(jsonb_build_object('kind','electronic','doc_category','invoice','doc_date',current_date-10,'amount',110000,
   'counterparty_name','テスト外注','received_on',current_date-3,'channel','email','file_name','inv1.pdf'),
@@ -24,7 +33,7 @@ do $$ declare r record; begin
   select * into r from received_documents where id = current_setting('t.e1')::uuid;
   if r.importance <> 'important' or r.kind <> 'electronic' or r.input_timeliness <> 'early' then raise exception 'NG: 区分 %', r.importance; end if;
   if r.sha256 <> encode(sha256(convert_to('%PDF-1.4 inv1','UTF8')),'hex') then raise exception 'NG: ハッシュ'; end if;
-  if r.deadline_early <> public.add_business_days(r.received_on, 7) or r.deadline_max <> public.add_business_days((r.received_on + interval '2 months')::date, 7) then raise exception 'NG: 期限'; end if;
+  if r.deadline_early <> public.add_business_days(r.received_on, 7) or r.deadline_max <> public.add_business_days(public.calendar_two_months_end(r.received_on), 7) then raise exception 'NG: 期限'; end if;
   if r.scanned_on is not null or r.resolution_dpi is not null then raise exception 'NG: 電子取引にスキャン項目'; end if;
   raise notice 'OK 電子取引を登録（重要書類・ハッシュ・入力期限をDBが計算）';
 end $$;
@@ -54,11 +63,13 @@ end $$;
 -- スキャナ保存の読取条件
 create temp table scan_meta as select jsonb_build_object('kind','scanned','doc_category','receipt','doc_date',current_date-50,'amount',3300,
   'counterparty_name','紙の取引先','received_on',current_date-45,'scanned_on',current_date,'resolution_dpi',300,'color_mode','color',
-  'page_count',1,'page_size','A4','file_name','scan1.pdf') as m;
+  'page_count',1,'page_size','A4','file_name','scan1.pdf','related_ref','PUR-001') as m;
 grant select on scan_meta to authenticated;
 do $$ declare m jsonb; begin select scan_meta.m into m from scan_meta;
   begin perform register_received_document(m || '{"resolution_dpi":150}', encode(convert_to('%PDF-1.4 s150','UTF8'),'base64'));
     raise exception 'NG: 150dpiが通った'; exception when others then if sqlerrm like 'NG:%' then raise; end if; raise notice 'OK 解像度200dpi未満を拒否: %', sqlerrm; end;
+  begin perform register_received_document(m || '{"color_mode":"grayscale"}', encode(convert_to('%PDF-1.4 sgray','UTF8'),'base64'));
+    raise exception 'NG: 重要書類のグレースケールが通った'; exception when others then if sqlerrm like 'NG:%' then raise; end if; raise notice 'OK 重要書類のグレースケールを拒否: %', sqlerrm; end;
   begin perform register_received_document(m || '{"color_mode":"mono"}', encode(convert_to('%PDF-1.4 smono','UTF8'),'base64'));
     raise exception 'NG: 白黒2値が通った'; exception when others then if sqlerrm like 'NG:%' then raise; end if; raise notice 'OK 白黒2値を拒否: %', sqlerrm; end;
   begin perform register_received_document(m, encode(convert_to('plain text','UTF8'),'base64'));
@@ -74,6 +85,35 @@ do $$ begin
   if (select input_timeliness from received_documents where id = current_setting('t.s1')::uuid) <> 'cycle' then raise exception 'NG: 45日前受領は cycle'; end if;
   if (select input_timeliness from received_documents where id = current_setting('t.s2')::uuid) <> 'late' then raise exception 'NG: 120日前受領は late'; end if;
   raise notice 'OK スキャン入力の期限判定（7営業日以内=early / 2か月+7営業日以内=cycle / 超過=late）';
+end $$;
+
+-- 帳簿との相互関連性: 登録時に帳簿が未作成でも登録でき、未紐づけとして一覧に出る。後から追記で紐づけられる（問21の注）
+select register_received_document((select m from scan_meta) - 'related_ref' || jsonb_build_object('file_name','unlinked.pdf'),
+  encode(convert_to('%PDF-1.4 unlinked','UTF8'),'base64')) as u1 \gset
+select set_config('t.u1', :'u1', false);
+do $$ begin
+  if not exists (select 1 from v_received_unlinked where id = current_setting('t.u1')::uuid) then raise exception 'NG: 未紐づけの一覧に出ない'; end if;
+  insert into received_document_links (received_id, ref) values (current_setting('t.u1')::uuid, 'PUR-777');
+  if exists (select 1 from v_received_unlinked where id = current_setting('t.u1')::uuid) then raise exception 'NG: 紐づけ後も未紐づけに残る'; end if;
+  begin update received_document_links set ref = 'x'; raise exception 'NG: 紐づけの更新が通った';
+  exception when others then if sqlerrm like 'NG:%' then raise; end if; end;
+  begin insert into received_document_links (received_id) values (current_setting('t.u1')::uuid); raise exception 'NG: 空の紐づけが通った';
+  exception when others then if sqlerrm like 'NG:%' then raise; end if; end;
+  raise notice 'OK 重要書類は後から帳簿へ紐づけでき（追記のみ）、未紐づけは一覧に出る';
+end $$;
+
+-- 一般書類（見積書）はグレースケール可・関連帳簿は不要。入力期間を過ぎた重要書類は紙の原本の保存が必要（スキャナ保存 問24）
+select register_received_document((select m from scan_meta) || jsonb_build_object('doc_category','quote','color_mode','grayscale','file_name','gq.pdf') - 'related_ref',
+  encode(convert_to('%PDF-1.4 gen-gray','UTF8'),'base64')) as g1 \gset
+select register_received_document((select m from scan_meta) || jsonb_build_object('doc_category','quote','color_mode','grayscale','received_on',current_date-120,'doc_date',current_date-125,'file_name','gq2.pdf') - 'related_ref',
+  encode(convert_to('%PDF-1.4 gen-gray-old','UTF8'),'base64')) as g2 \gset
+select set_config('t.g1', :'g1', false), set_config('t.g2', :'g2', false);
+do $$ begin
+  if (select importance from received_documents where id = current_setting('t.g1')::uuid) <> 'general' then raise exception 'NG: 見積書は一般書類'; end if;
+  if (select paper_original_required from received_documents where id = current_setting('t.s2')::uuid) is not true then raise exception 'NG: 期限を過ぎた重要書類は紙の原本が必要'; end if;
+  if (select paper_original_required from received_documents where id = current_setting('t.s1')::uuid) is not false then raise exception 'NG: 期限内の重要書類は紙の原本は不要'; end if;
+  if (select paper_original_required from received_documents where id = current_setting('t.g2')::uuid) is not false then raise exception 'NG: 一般書類は入力期間の制限なし'; end if;
+  raise notice 'OK 一般書類はグレースケール可・関連帳簿は不要・入力期間の制限なし。期限を過ぎた重要書類は「紙の原本を保存」';
 end $$;
 
 -- 改ざん防止

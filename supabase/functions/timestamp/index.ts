@@ -1,7 +1,7 @@
 // Edge Function: timestamp
 // 受領書類・送付したPDF・発行帳票のハッシュに、時刻認証局（TSA, RFC 3161）のタイムスタンプを付与して記録する。
 // TSA の URL・認証情報は secret（TSA_URL / TSA_NAME / TSA_AUTH）。応答やログに出さない。
-// 法令上は、認定された時刻認証事業者のものを使う必要がある（docs/電帳法対応方針.md）。
+// 法令上は、総務大臣が認定する時刻認証業務に係るタイムスタンプを使う必要がある（国税庁 一問一答 電子取引 問60、docs/電帳法対応方針.md）。
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { buildTimeStampReq, parseTimeStampResp } from "./rfc3161.ts";
 
