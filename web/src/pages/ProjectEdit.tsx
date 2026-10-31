@@ -7,6 +7,7 @@ import {
 import { AiImport } from "./AiImport";
 import { Deliveries } from "./Deliveries";
 import { ConvertPanel } from "./ConvertPanel";
+import { ProjectPreview } from "./ProjectPreview";
 import { ItemsEditor } from "./ItemsEditor";
 
 type Opt = { id: string; name: string };
@@ -29,6 +30,7 @@ export function ProjectEdit({ id, myId, canWrite, onBack }: {
   const [aiOpen, setAiOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rev, setRev] = useState(0); // 保存・変換のたびに増やし、発行イメージを更新する
 
   async function load(pid: string) {
     const [p, it, sm] = await Promise.all([
@@ -49,6 +51,7 @@ export function ProjectEdit({ id, myId, canWrite, onBack }: {
     setOrigIds(rows.map((x) => x.id as string));
     setAmounts(Object.fromEntries(rows.map((x) => [x.id as string, Number(x.sale_amount)])));
     setSummary(sm.data as Summary | null);
+    setRev((n) => n + 1);
   }
 
   useEffect(() => {
@@ -119,7 +122,8 @@ export function ProjectEdit({ id, myId, canWrite, onBack }: {
 
   const ro = !canWrite;
   return (
-    <>
+    <div className="split">
+    <div className="split-main stack">
     <form onSubmit={save} className="stack">
       <div className="row">
         <button type="button" className="secondary" onClick={onBack}>← 一覧へ</button>
@@ -177,6 +181,10 @@ export function ProjectEdit({ id, myId, canWrite, onBack }: {
       {canWrite && <div className="row"><button disabled={busy}>{busy ? "保存中…" : "保存"}</button></div>}
     </form>
     {projectId && <Deliveries projectId={projectId} status={head.status} canWrite={canWrite} onChanged={() => load(projectId)} />}
-    </>
+    </div>
+    <aside className="split-side">
+      {projectId ? <ProjectPreview projectId={projectId} rev={rev} canWrite={canWrite} /> : <div className="card inactive">案件を保存すると、ここに見積書・納品書の発行イメージが表示されます。</div>}
+    </aside>
+    </div>
   );
 }

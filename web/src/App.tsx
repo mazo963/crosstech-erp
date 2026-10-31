@@ -16,11 +16,18 @@ import { Export } from "./pages/Export";
 import { MasterPage } from "./pages/MasterPage";
 import { customers, vendors } from "./lib/masters";
 
-const tabs = ["ダッシュボード", "見積", "案件", "納品", "請求", "入金", "帳票", "受領書類", "出力", "税率", "得意先", "外注先"] as const;
+// 左のメニュー。業務の流れ（見積→案件→納品→請求→入金）の順
+const groups = [
+  ["", ["ダッシュボード"]],
+  ["売上", ["見積", "案件", "納品", "請求", "入金"]],
+  ["書類", ["帳票", "受領書類", "出力"]],
+  ["マスタ", ["得意先", "外注先", "税率"]],
+] as const;
+type Tab = (typeof groups)[number][1][number];
 
 export function App() {
   const { session, staff, loading } = useSession();
-  const [tab, setTab] = useState<(typeof tabs)[number]>("ダッシュボード");
+  const [tab, setTab] = useState<Tab>("ダッシュボード");
   const [route, setRoute] = useState<Route>(parseRoute());
   useEffect(() => {
     const onHash = () => { const r = parseRoute(); setRoute(r); if (r) setTab(r.kind === "doc" ? "帳票" : r.kind === "invoice" ? "請求" : "案件"); };
@@ -49,8 +56,14 @@ export function App() {
         <span>{staff.name}（{staff.role}）</span>
         <button onClick={() => supabase.auth.signOut()}>ログアウト</button>
       </header>
-      <nav>
-        {tabs.map((t) => <button key={t} className={t === tab ? "" : "secondary"} onClick={() => { setTab(t); clearRoute(); }}>{t}</button>)}
+      <div className="shell">
+      <nav className="side">
+        {groups.map(([g, ts]) => (
+          <div key={g || "top"}>
+            {g && <h4>{g}</h4>}
+            {ts.map((t) => <button key={t} className={t === tab ? "active" : ""} onClick={() => { setTab(t); clearRoute(); }}>{t}</button>)}
+          </div>
+        ))}
       </nav>
       <main>
         {tab === "ダッシュボード" && <Dashboard />}
@@ -66,6 +79,7 @@ export function App() {
         {tab === "得意先" && <MasterPage def={customers} canWrite={staff.role !== "viewer"} />}
         {tab === "外注先" && <MasterPage def={vendors} canWrite={staff.role !== "viewer"} />}
       </main>
+      </div>
     </>
   );
 }

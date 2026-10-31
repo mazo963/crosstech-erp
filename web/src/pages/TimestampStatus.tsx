@@ -32,7 +32,7 @@ export function TimestampStatus({ canWrite, refreshKey }: { canWrite: boolean; r
         <tbody>
           {rows.map((r) => (
             <tr key={r.subject_id}>
-              <td>{r.subject_table === "document_files" ? "送付PDF " : "受領書類 "}{r.label}</td><td>{r.deadline}</td>
+              <td className="wrap">{r.subject_table === "document_files" ? "送付PDF " : "受領書類 "}{r.label}</td><td>{r.deadline}</td>
               <td className={r.status === "overdue" ? "error" : ""}>{TS_STATUS[r.status]}</td>
               <td>{canWrite && r.status !== "stamped_late" && <button className="secondary" onClick={() => run(r)}>付与を実行</button>}</td>
             </tr>

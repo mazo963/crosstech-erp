@@ -73,6 +73,7 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
 - [x] テスト: `scripts/test_scenario.sql`・`test_tax_rates.sql`・`test_received.sql`（2026-10-31 全項目合格。一次資料に合わせた修正を含む）、`supabase/functions/*/` の単体テスト
 - [x] 10・11 ダウンロードの求めへの出力（`20261101000010`・`11`、画面「出力」）：出力用ビュー、一覧CSV（受領書類・発行済み帳票・送付PDF）、ZIP（ファイル本体、発行済み帳票の固定内容JSON・単体HTML、SHA-256の照合つき）。国税庁 電子取引 問59。ブラウザでの出力は、ダミーのAPIでPlaywrightにより確認済み
 - [x] 12 見積 → 受注 → 納品 → 請求の変換（`20261101000012`）：`order_project`、`deliver_all`（全数納品）、`create_invoice_for_project`・`create_invoice_for_delivery`（案件・納品単位の請求書。締め請求は従来どおり）、`v_delivery_list`。画面：「見積」「納品」タブ、案件の変換パネル（①見積書 ②受注 ③納品書 ④請求書）。ダミーのAPIでPlaywrightにより画面の流れを確認済み
+- [x] 13 帳票の発行イメージ（`20261101000013`）：`build_document_content`（記載内容の組み立て。発行とプレビューで共通）、`preview_document`（保存しない）。画面を、左メニュー＋内容は全幅、帳票は左右2列（右にA4の発行イメージ）に変更（ダミーAPI＋Playwrightで確認。全ページで内容の幅が一定）
 - [x] システム概要書（`docs/システム概要書.md`）と、備付け書類の対応表（`docs/システム関係書類一覧.md`）。**操作マニュアルと事務手続の書類は未作成**、仕様書は v2.1 に更新済み（実装状況の列つき）
 - [x] 業務シナリオテスト（`scripts/test_scenario.sql`）全項目合格（2026-10-31。入金取消・帳票発行の項目を追加。以降の機能は上のテストファイルに分けた）
 

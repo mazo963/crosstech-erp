@@ -4,6 +4,7 @@ import { type DocType, DOC_LABEL, type IssuedDoc, openDocument } from "../lib/do
 import { yen } from "../lib/format";
 import { DocumentRecords } from "./DocumentRecords";
 import { DocumentView } from "./DocumentView";
+import { FitPage } from "./FitPage";
 
 type Row = Pick<IssuedDoc, "id" | "doc_type" | "doc_no" | "version" | "doc_date" | "amount" | "counterparty_name" | "voided">;
 
@@ -87,7 +88,8 @@ function DocumentDetail({ id, canWrite }: { id: string; canWrite: boolean }) {
   if (error) return <p className="error">{error}</p>;
   if (!doc) return <p>読み込み中…</p>;
   return (
-    <div className="stack">
+    <div className="split">
+    <div className="split-main stack">
       <div className="row no-print">
         <button className="secondary" onClick={() => { window.location.hash = ""; }}>← 検索へ</button>
         <h2>{DOC_LABEL[doc.doc_type]} {doc.doc_no}（版 {doc.version}）</h2>
@@ -98,8 +100,9 @@ function DocumentDetail({ id, canWrite }: { id: string; canWrite: boolean }) {
           <button key={v.id} className={v.id === id ? "" : "secondary"} onClick={() => openDocument(v.id)}>版{v.version}{v.voided ? "（取消）" : ""}</button>
         ))}</p>
       )}
-      <DocumentView doc={doc} />
       <DocumentRecords documentId={doc.id} voided={doc.voided} canWrite={canWrite} />
+    </div>
+    <aside className="split-side"><FitPage><DocumentView doc={doc} /></FitPage></aside>
     </div>
   );
 }

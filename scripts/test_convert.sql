@@ -130,3 +130,19 @@ do $$ begin
   perform create_invoice_for_delivery(current_setting('t.dx1')::uuid);
   raise exception 'NG: 取消した納品が請求できた';
 exception when others then if sqlerrm like 'NG:%' then raise; end if; raise notice 'OK 取消した納品は請求できない: %', sqlerrm; end $$;
+
+-- 請求書のプレビュー: 下書きでも見られる。発行（帳票の固定）は発行済みだけ
+insert into projects (customer_id, title, status) select id, '案件V', 'ordered' from customers where name='変換テスト商事';
+insert into project_items (project_id, name, quantity, sale_unit_price) select id, 'V1', 2, 3000 from projects where title='案件V';
+select deliver_all((select id from projects where title='案件V'), '2026-12-22');
+select create_invoice_for_project((select id from projects where title='案件V'), '2026-12-22') as ivd \gset
+select set_config('t.ivd', :'ivd', false);
+do $$ declare pv jsonb; begin
+  pv := preview_document('invoice', current_setting('t.ivd')::uuid);
+  if (pv->>'total')::numeric <> 6600 or pv->>'doc_no' is null or jsonb_array_length(pv->'tax_breakdown') <> 1 then raise exception 'NG: 下書きのプレビュー %', pv; end if;
+  begin perform issue_document('invoice', current_setting('t.ivd')::uuid); raise exception 'NG: 下書きの請求書が発行できた';
+  exception when others then if sqlerrm like 'NG:%' then raise; end if; end;
+  begin perform preview_document('invoice', current_setting('t.iv1')::uuid); raise exception 'NG: 取消済みのプレビューが通った';
+  exception when others then if sqlerrm like 'NG:%' then raise; end if; end;
+  raise notice 'OK 請求書は下書きでもプレビューできる（発行は発行済みだけ。取消済みは不可）';
+end $$;

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { yen } from "../lib/format";
 import { IssueButton } from "./IssueButton";
+import { DocPreview } from "./DocPreview";
 
 type Inv = {
   id: string; invoice_no: string; customer_name: string; period_from: string | null; period_to: string; issue_date: string;
@@ -48,7 +49,8 @@ export function InvoiceDetail({ id, canWrite, onBack }: { id: string; canWrite: 
 
   if (!inv) return <p className={error ? "error" : ""}>{error ?? "読み込み中…"}</p>;
   return (
-    <div className="stack">
+    <div className="split">
+    <div className="split-main stack">
       <div className="row">
         <button className="secondary" onClick={onBack}>← 一覧へ</button>
         <h2>{inv.invoice_no}（{INVOICE_STATUS[inv.status]}）</h2>
@@ -59,7 +61,7 @@ export function InvoiceDetail({ id, canWrite, onBack }: { id: string; canWrite: 
         <table>
           <thead><tr><th>内容</th><th>数量</th><th>単価</th><th>金額</th></tr></thead>
           <tbody>
-            {lines.map((l) => <tr key={l.id}><td>{l.is_reduced && "※ "}{l.description}</td><td>{l.quantity}</td><td>{yen(l.unit_price)}</td><td>{yen(l.amount)}</td></tr>)}
+            {lines.map((l) => <tr key={l.id}><td className="wrap">{l.is_reduced && "※ "}{l.description}</td><td>{l.quantity}</td><td>{yen(l.unit_price)}</td><td>{yen(l.amount)}</td></tr>)}
           </tbody>
         </table>
         <p>小計（税抜） {yen(inv.subtotal)}</p>
@@ -82,6 +84,13 @@ export function InvoiceDetail({ id, canWrite, onBack }: { id: string; canWrite: 
           <button className="secondary" onClick={voidIt}>取消</button>
         </div>
       )}
+    </div>
+    <aside className="split-side">
+      <div className="card stack">
+        <p className="inactive">請求書の発行イメージ{inv.status === "draft" ? "（下書き。発行済みにしてから、帳票として発行・固定します）" : "（現在の内容。固定した帳票は「帳票」タブ）"}</p>
+        <DocPreview type="invoice" sourceId={id} rev={inv.total + inv.status.length} />
+      </div>
+    </aside>
     </div>
   );
 }

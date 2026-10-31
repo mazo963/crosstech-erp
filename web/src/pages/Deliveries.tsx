@@ -94,7 +94,7 @@ export function Deliveries({ projectId, status, canWrite, onChanged }: {
           {history.map((d) => (
             <tr key={d.id} className={d.voided ? "inactive" : ""}>
               <td>{d.delivery_no}{d.voided && "（取消）"}</td><td>{d.delivered_on}</td>
-              <td>{d.delivery_lines.map((l) => `${l.project_items.product_no} ${l.project_items.name} ×${l.quantity}`).join(" / ")}
+              <td className="wrap">{d.delivery_lines.map((l) => `${l.project_items.product_no} ${l.project_items.name} ×${l.quantity}`).join(" / ")}
                 {d.voided && d.void_reason ? ` 理由: ${d.void_reason}` : ""}</td>
               <td>{yen(d.delivery_lines.reduce((s, l) => s + Number(l.amount), 0))}</td>
               <td>{canWrite && !d.voided && <><IssueButton type="delivery_note" sourceId={d.id} label="納品書" /><button type="button" className="secondary" onClick={() => voidDelivery(d)}>取消</button></>}</td>

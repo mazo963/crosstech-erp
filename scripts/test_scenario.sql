@@ -208,6 +208,17 @@ do $$ declare bad int; begin
   if bad <> 0 or (select count(*) from v_export_issued_content) < 3 then raise exception 'NG: 固定内容の出力 bad=%', bad; end if;
   raise notice 'OK 帳票の固定内容を出力でき、SHA-256が記録と一致する';
 end $$;
+-- プレビュー: 発行せずに内容を返し（保存しない）、そのあと発行した内容と一致する
+do $$ declare n0 int; n1 int; pq jsonb; pd jsonb; proj uuid := (select id from projects where title='プレート加工'); dv uuid := (select id from deliveries order by delivered_on limit 1); begin
+  select count(*) into n0 from issued_documents;
+  pq := preview_document('quote', proj);
+  pd := preview_document('delivery_note', dv);
+  select count(*) into n1 from issued_documents;
+  if n0 <> n1 then raise exception 'NG: プレビューが保存された'; end if;
+  if pq <> (select content from issued_documents where id = issue_document('quote', proj)) then raise exception 'NG: 見積書のプレビューと発行内容が違う'; end if;
+  if pd <> (select content from issued_documents where id = issue_document('delivery_note', dv)) then raise exception 'NG: 納品書のプレビューと発行内容が違う'; end if;
+  raise notice 'OK プレビューは保存されず、発行した内容と一致する（見積書・納品書）';
+end $$;
 -- 検索（取引年月日の範囲・金額の範囲・取引先の組合せ）
 do $$ declare n int; begin
   select count(*) into n from issued_documents

@@ -6,7 +6,7 @@ import { yen } from "../lib/format";
 // 税率の表示（0.0800 → 8%、0.0100 → 1%）
 const pctText = (r: number | undefined) => (r == null ? "" : `${Math.round(Number(r) * 10000) / 100}%`);
 
-export function DocumentView({ doc }: { doc: IssuedDoc }) {
+export function DocumentView({ doc, preview = false }: { doc: IssuedDoc; preview?: boolean }) {
   const c = doc.content;
   const isInvoice = c.doc_type === "invoice";
   const hasRate = c.lines.some((l) => l.tax_rate != null && c.doc_type !== "delivery_note");
@@ -14,6 +14,7 @@ export function DocumentView({ doc }: { doc: IssuedDoc }) {
   const copy = isInvoice && !c.official; // MFが正式な請求書のとき、ERPの請求書は控え・社内用
   return (
     <div className="paper">
+      {preview && <div className="preview-mark">発行イメージ（未発行）</div>}
       {doc.voided && <div className="stamp">取消済み{doc.void_reason ? `（${doc.void_reason}）` : ""}</div>}
       {copy && <p className="copy-note">【ERP控え・社内用】正式な請求書はマネーフォワードで発行{c.mf_invoice_no ? `（MF請求書番号: ${c.mf_invoice_no}）` : ""}</p>}
       <h1>{DOC_LABEL[c.doc_type]}{copy ? "（控え）" : ""}</h1>
@@ -55,7 +56,7 @@ export function DocumentView({ doc }: { doc: IssuedDoc }) {
       {hasReduced && <p className="spec">※は軽減税率の対象品目です。</p>}
       {isInvoice && c.bank_info && <p className="bank">お振込先: {c.bank_info}</p>}
       {c.notes && <p className="notes">備考: {c.notes}</p>}
-      <p className="foot">発行 {doc.issued_at.slice(0, 16).replace("T", " ")}　版 {doc.version}　内容ハッシュ {doc.content_sha256.slice(0, 12)}</p>
+      <p className="foot">{preview ? "発行イメージ（まだ発行されていません）" : `発行 ${doc.issued_at.slice(0, 16).replace("T", " ")}　版 ${doc.version}　内容ハッシュ ${doc.content_sha256.slice(0, 12)}`}</p>
     </div>
   );
 }

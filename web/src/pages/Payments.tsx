@@ -63,8 +63,8 @@ export function Payments({ canWrite }: { canWrite: boolean }) {
                 <td>{p.received_on}</td><td>{p.customers.name}</td><td>{yen(p.amount)}</td><td>{yen(p.fee)}</td>
                 <td>{METHODS.find(([v]) => v === p.method)?.[1]}{p.voided && "（取消）"}</td>
                 <td>{[p.bank_name, p.account_no].filter(Boolean).join(" / ")}</td>
-                <td>{p.voided ? "（取消済み）" : p.payment_allocations.map((a) => `${a.invoices.invoice_no} ${yen(a.amount)}`).join(" / ") || "（未消込）"}</td>
-                <td>{p.memo ?? ""}{p.voided && p.void_reason ? ` 取消理由: ${p.void_reason}` : ""}</td>
+                <td className="wrap">{p.voided ? "（取消済み）" : p.payment_allocations.map((a) => `${a.invoices.invoice_no} ${yen(a.amount)}`).join(" / ") || "（未消込）"}</td>
+                <td className="wrap">{p.memo ?? ""}{p.voided && p.void_reason ? ` 取消理由: ${p.void_reason}` : ""}</td>
                 <td>{canWrite && !p.voided && <button type="button" className="secondary" onClick={() => voidPayment(p)}>取消</button>}</td>
               </tr>
             ))}

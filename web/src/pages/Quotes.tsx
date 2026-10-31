@@ -51,7 +51,7 @@ export function Quotes({ canWrite }: { canWrite: boolean }) {
             const d = docs[r.id];
             return (
               <tr key={r.id}>
-                <td className="nowrap">{r.project_no}</td><td className="nowrap">{r.estimate_date ?? ""}</td><td>{r.customer_name}</td><td>{r.title}</td>
+                <td className="nowrap">{r.project_no}</td><td className="nowrap">{r.estimate_date ?? ""}</td><td>{r.customer_name}</td><td className="wrap">{r.title}</td>
                 <td className="nowrap">{yen(r.sales_amount)}</td><td>{pct(r.margin_pct)}</td><td className="nowrap">{PROGRESS[r.progress] ?? r.progress}</td>
                 <td className="nowrap">{d ? <button className="linkbtn" onClick={() => openDocument(d.id)}>版{d.version}（税込{yen(d.amount)}）</button> : <span className="inactive">未発行</span>}</td>
                 <td className="nowrap">
