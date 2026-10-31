@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { requestTimestamp } from "../lib/timestamp";
 
 type Delivery = { id: string; method: string; delivered_on: string; recipient: string | null; note: string | null };
 type FileRow = { id: string; delivery_id: string | null; file_name: string; size_bytes: number; sha256: string; uploaded_at: string };
@@ -42,6 +43,10 @@ export function DocumentRecords({ documentId, voided, canWrite }: { documentId: 
       const b64 = await toBase64(pdf);
       const up = await supabase.rpc("attach_document_pdf", { p_document_id: documentId, p_delivery_id: ins.data.id, p_file_name: pdf.name, p_base64: b64 });
       if (up.error) setError(`交付は記録しましたが、PDFを保存できませんでした: ${up.error.message}`);
+      else {
+        const ts = await requestTimestamp("document_files", up.data as string);
+        if (!ts.ok) setError(`PDFは保存しました。タイムスタンプは保留です（受領書類タブの状況一覧から再実行できます）: ${ts.message}`);
+      }
     }
     setBusy(false);
     setPdf(null); setRecipient(""); setNote("");

@@ -47,6 +47,9 @@ PostgreSQL 15以上で、Supabase の auth スキーマを再現する `scripts/
 createdb erp_test
 for f in scripts/test_stub_supabase.sql supabase/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -d erp_test -f "$f" || break; done
 psql -d erp_test -f scripts/test_scenario.sql   # NOTICE に「OK ...」が並べば合格。「NG」で止まれば不合格
+psql -d erp_test -f scripts/test_tax_rates.sql  # 複数税率
+psql -d erp_test -f scripts/test_received.sql   # 受領書類・スキャナ保存・タイムスタンプ
+node --experimental-strip-types --test supabase/functions/*/*.test.ts   # Edge Function の単体テスト（OpenSSLがあれば本物のタイムスタンプ応答も検証）
 ```
 
 Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも同じマイグレーションが適用される。
@@ -61,12 +64,17 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
   - 04 RLS：admin / office / viewer。スタッフ未登録のユーザーと anon は業務データに触れない
 - [x] 05 入金の銀行情報・取消（`20261031000005`）：`payments` に入金銀行・口座番号・取消の列、`record_payment` を銀行振込で銀行・口座必須に作り直し、`void_payment` を追加。残高ビューは取消済み入金を除外。ローカルのシナリオテスト全項目合格（2026-10-31）
 - [x] 06 帳票の発行・固定（`20261031000006`）：`issued_documents`（内容・SHA-256・版・検索項目）、`document_deliveries`（交付記録）、`document_files`（送付PDF）、`issue_document` / `attach_document_pdf`。更新・削除は特権ロールでも不可、元の請求書・納品の取消で帳票も取消。`company_settings.erp_invoice_official`（MFが正式の間は false）
-- [x] 業務シナリオテスト（`scripts/test_scenario.sql`）全項目合格（2026-10-31。入金取消・帳票発行の項目を追加）
+- [x] 07 複数税率（`20261101000007`）：税区分・期間つき税率・納品日時点の税率固定・税率別の請求と帳票。`set_tax_rate`（管理者のみ、さかのぼり不可）。将来の税率（1%など）は未登録（確定後に画面の「税率」から登録）
+- [x] 08 受領書類とタイムスタンプ（`20261101000008`）：電子取引・スキャナ保存の登録（`register_received_document`、読取条件・入力期限・ハッシュをDBが確認）、取消のみ可・更新削除不可、`document_timestamps`（RFC 3161）、`v_timestamp_status`
+- [x] Edge Function `timestamp`（RFC 3161の要求・応答の解析はOpenSSLの本物の応答でテスト済み）。**認定事業者のTSAは未契約**（secret `TSA_URL` / `TSA_NAME` / `TSA_AUTH` 未設定のため付与は保留）。`scripts/verify_timestamp.sh` で再検証
+- [x] テスト: `scripts/test_scenario.sql`・`test_tax_rates.sql`・`test_received.sql`（2026-11-01 全項目合格）、`supabase/functions/*/` の単体テスト
+- [x] 業務シナリオテスト（`scripts/test_scenario.sql`）全項目合格（2026-10-31。入金取消・帳票発行の項目を追加。以降の機能は上のテストファイルに分けた）
+
 
 ### 残作業（この順で進める）
 1. [x] **Edge Function `ai-extract`**（実装・単体テスト合格 2026-10-30。Deno/Supabase 上での実機確認は未）：メール本文 / 注文書PDF → 案件下書きJSON。Anthropic Messages API を tool use で構造化出力。モデルは環境変数 `AI_MODEL_DEFAULT`（Haiku）/ `AI_MODEL_ADVANCED`（Sonnet）で切替（モデルIDはコードに直書きしない）。`ai_extractions` にトークン数を記録し、`AI_MONTHLY_TOKEN_LIMIT` 超過で停止。ユーザーのJWTでDBに接続し、RLSを効かせる
 2. [x] **Edge Function `juchu-sync`**（実装・単体テスト合格 2026-10-30。実GASのJSON形式・Supabase上での確認は未）：受注GASの doGet（受注JSON配列）を取得 → `items[].productNo` で照合 → `project_items.juchu_completed_at / juchu_shipped_date / juchu_synced_at` を更新。GAS URL は Supabase の secret `JUCHU_GAS_URL`。受注側へは書き込まない
-3. [ ] **画面 `web/`**（ログイン・スタッフ確認・ダッシュボード・得意先/外注先マスタ・案件（品目行・AI取込）・分納記録・締め請求（作成/発行/取消）・入金登録（銀行・口座番号、取消）・帳票（発行・固定・印刷・検索・交付記録・送付PDF保存）まで実装、ビルド成功 2026-10-30。以下の残りは未実装）：ログイン（Supabase Auth。固定の admin/crosstech は使わない）、ダッシュボード、得意先・外注先マスタ、案件（品目行・AI取込ボタン）、分納記録、締め請求の作成・発行、入金登録、メール作成（mailto でTO/CC/件名/本文を自動入力）、設定（自社情報・スタッフ）
+3. [ ] **画面 `web/`**（ログイン・スタッフ確認・ダッシュボード・得意先/外注先マスタ・案件（品目行・AI取込）・分納記録・締め請求（作成/発行/取消）・入金登録（銀行・口座番号、取消）・帳票（発行・固定・印刷・検索・交付記録・送付PDF保存）・受領書類（電子取引・スキャナ保存・タイムスタンプ状況）・税率まで実装、ビルド成功 2026-10-30。以下の残りは未実装）：ログイン（Supabase Auth。固定の admin/crosstech は使わない）、ダッシュボード、得意先・外注先マスタ、案件（品目行・AI取込ボタン）、分納記録、締め請求の作成・発行、入金登録、メール作成（mailto でTO/CC/件名/本文を自動入力）、設定（自社情報・スタッフ）
 4. [ ] **GitHub Actions**：
    - CI：PostgreSQL サービスで §5 のテストを実行、`web/` のビルド
    - デプロイ：`web/` の静的ビルド
@@ -82,7 +90,8 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
 - 外注仕入の支払管理をどこまでやるか（支払予定表・振込データ作成まで必要か）
 - 受注システムの「加工完了 → 納品処理ToDo」を、ERPの分納記録とどうつなぐか（二重入力にしない）
 - 在宅ワーク管理ダッシュボードが、将来ERPのデータを読むか
-- **電子帳簿保存法**（`docs/電帳法対応方針.md` §6・§8）：本番運用の前にバックアップ方式を決める（必須）。税理士に確認する事項、送付PDFの自動保存、受領した電子取引の保存、CSV出力が未了。法令の細部は国税庁の一次資料で未確認
+- **電子帳簿保存法**（`docs/電帳法対応方針.md` §6・§8）：本番運用の前にバックアップ方式を決める（必須）。**タイムスタンプの認定事業者の選定・契約**。税理士に確認する事項、送付PDFの自動保存、CSV出力が未了。法令の細部（スキャナ保存の読取条件・期限、将来の税率）は国税庁などの一次資料で未確認
+- **将来の税率**（来年1月からの予定とされる1%など）：内容・施行日・対象を一次資料で確認してから、画面の「税率」で登録する
 
 ## 8. 関連
 
