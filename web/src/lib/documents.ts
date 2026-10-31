@@ -27,4 +27,3 @@ export type IssuedDoc = {
 
 /** 帳票URL（#doc=<id>）。どの画面からでも帳票を開ける。 */
 export const openDocument = (id: string) => { window.location.hash = `doc=${id}`; };
-export const docIdFromHash = (): string | null => /^#doc=([0-9a-f-]{36})$/.exec(window.location.hash)?.[1] ?? null;

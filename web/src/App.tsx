@@ -7,21 +7,23 @@ import { Projects } from "./pages/Projects";
 import { Invoices } from "./pages/Invoices";
 import { Payments } from "./pages/Payments";
 import { Documents } from "./pages/Documents";
-import { docIdFromHash } from "./lib/documents";
+import { parseRoute, clearRoute, type Route } from "./lib/nav";
+import { Quotes } from "./pages/Quotes";
+import { DeliveryList } from "./pages/DeliveryList";
 import { TaxRates } from "./pages/TaxRates";
 import { Received } from "./pages/Received";
 import { Export } from "./pages/Export";
 import { MasterPage } from "./pages/MasterPage";
 import { customers, vendors } from "./lib/masters";
 
-const tabs = ["ダッシュボード", "案件", "請求", "入金", "帳票", "受領書類", "出力", "税率", "得意先", "外注先"] as const;
+const tabs = ["ダッシュボード", "見積", "案件", "納品", "請求", "入金", "帳票", "受領書類", "出力", "税率", "得意先", "外注先"] as const;
 
 export function App() {
   const { session, staff, loading } = useSession();
   const [tab, setTab] = useState<(typeof tabs)[number]>("ダッシュボード");
-  const [docId, setDocId] = useState<string | null>(docIdFromHash());
+  const [route, setRoute] = useState<Route>(parseRoute());
   useEffect(() => {
-    const onHash = () => { const id = docIdFromHash(); setDocId(id); if (id) setTab("帳票"); };
+    const onHash = () => { const r = parseRoute(); setRoute(r); if (r) setTab(r.kind === "doc" ? "帳票" : r.kind === "invoice" ? "請求" : "案件"); };
     window.addEventListener("hashchange", onHash);
     onHash();
     return () => window.removeEventListener("hashchange", onHash);
@@ -48,14 +50,16 @@ export function App() {
         <button onClick={() => supabase.auth.signOut()}>ログアウト</button>
       </header>
       <nav>
-        {tabs.map((t) => <button key={t} className={t === tab ? "" : "secondary"} onClick={() => { setTab(t); if (t !== "帳票") window.location.hash = ""; }}>{t}</button>)}
+        {tabs.map((t) => <button key={t} className={t === tab ? "" : "secondary"} onClick={() => { setTab(t); clearRoute(); }}>{t}</button>)}
       </nav>
       <main>
         {tab === "ダッシュボード" && <Dashboard />}
-        {tab === "案件" && <Projects myId={staff.id} canWrite={staff.role !== "viewer"} />}
-        {tab === "請求" && <Invoices canWrite={staff.role !== "viewer"} />}
+        {tab === "見積" && <Quotes canWrite={staff.role !== "viewer"} />}
+        {tab === "案件" && <Projects myId={staff.id} canWrite={staff.role !== "viewer"} routeId={route?.kind === "project" ? route.id : null} />}
+        {tab === "納品" && <DeliveryList canWrite={staff.role !== "viewer"} />}
+        {tab === "請求" && <Invoices canWrite={staff.role !== "viewer"} routeId={route?.kind === "invoice" ? route.id : null} />}
         {tab === "入金" && <Payments canWrite={staff.role !== "viewer"} />}
-        {tab === "帳票" && <Documents docId={docId} canWrite={staff.role !== "viewer"} />}
+        {tab === "帳票" && <Documents docId={route?.kind === "doc" ? route.id : null} canWrite={staff.role !== "viewer"} />}
         {tab === "受領書類" && <Received canWrite={staff.role !== "viewer"} />}
         {tab === "出力" && <Export who={`${staff.name}（${staff.role}）`} />}
         {tab === "税率" && <TaxRates isAdmin={staff.role === "admin"} />}

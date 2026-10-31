@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { yen } from "../lib/format";
+import { clearRoute } from "../lib/nav";
 import { InvoiceCreate } from "./InvoiceCreate";
 import { INVOICE_STATUS, InvoiceDetail } from "./InvoiceDetail";
 
@@ -9,11 +10,13 @@ type Row = {
   total: number; balance: number; status: string; overdue: boolean; mf_invoice_no: string | null;
 };
 
-export function Invoices({ canWrite }: { canWrite: boolean }) {
+export function Invoices({ canWrite, routeId }: { canWrite: boolean; routeId?: string | null }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [filter, setFilter] = useState("");
   const [view, setView] = useState<{ kind: "list" } | { kind: "new" } | { kind: "detail"; id: string }>({ kind: "list" });
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => { if (routeId) setView({ kind: "detail", id: routeId }); }, [routeId]); // 他のタブから請求書を開く（#invoice=…）
 
   useEffect(() => {
     if (view.kind !== "list") return;
@@ -26,7 +29,7 @@ export function Invoices({ canWrite }: { canWrite: boolean }) {
   if (view.kind === "new") {
     return <InvoiceCreate onCreated={(id) => setView({ kind: "detail", id })} onCancel={() => setView({ kind: "list" })} />;
   }
-  if (view.kind === "detail") return <InvoiceDetail id={view.id} canWrite={canWrite} onBack={() => setView({ kind: "list" })} />;
+  if (view.kind === "detail") return <InvoiceDetail id={view.id} canWrite={canWrite} onBack={() => { setView({ kind: "list" }); clearRoute(); }} />;
 
   const shown = rows.filter((r) => !filter || r.status === filter);
   return (

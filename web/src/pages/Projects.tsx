@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { pct, yen } from "../lib/format";
+import { clearRoute } from "../lib/nav";
 import { ProjectEdit } from "./ProjectEdit";
 
 type Row = {
@@ -12,11 +13,13 @@ const PROGRESS: Record<string, string> = {
   estimate: "見積中", ordered: "受注", partial: "一部納品", delivered: "納品済", invoiced: "請求済", lost: "失注", closed: "完了",
 };
 
-export function Projects({ myId, canWrite }: { myId: string; canWrite: boolean }) {
+export function Projects({ myId, canWrite, routeId }: { myId: string; canWrite: boolean; routeId?: string | null }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [filter, setFilter] = useState("");
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => { if (routeId) setEditing(routeId); }, [routeId]); // 他のタブから案件を開く（#project=…）
 
   useEffect(() => {
     if (editing) return;
@@ -27,7 +30,7 @@ export function Projects({ myId, canWrite }: { myId: string; canWrite: boolean }
   }, [editing]);
 
   if (editing) {
-    return <ProjectEdit id={editing === "new" ? null : editing} myId={myId} canWrite={canWrite} onBack={() => setEditing(null)} />;
+    return <ProjectEdit id={editing === "new" ? null : editing} myId={myId} canWrite={canWrite} onBack={() => { setEditing(null); clearRoute(); }} />;
   }
   const shown = rows.filter((r) => !filter || r.progress === filter);
   return (

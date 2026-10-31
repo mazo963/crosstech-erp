@@ -51,3 +51,10 @@ select, textarea { padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; 
   main { max-width: none; padding: 0; }
   .paper { box-shadow: none; padding: 0; max-width: none; }
 }
+nav { flex-wrap: wrap; }
+.nowrap { white-space: nowrap; }
+.row.wrap { flex-wrap: wrap; }
+button.linkbtn { background: none; color: #2563eb; padding: 0; text-decoration: underline; }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.step { display: grid; gap: 2px; padding: 8px 10px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; }
+.step span { color: #6b7280; }

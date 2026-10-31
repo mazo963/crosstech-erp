@@ -50,6 +50,7 @@ for f in scripts/test_stub_supabase.sql supabase/migrations/*.sql; do psql -v ON
 psql -d erp_test -f scripts/test_scenario.sql   # NOTICE に「OK ...」が並べば合格。「NG」で止まれば不合格
 psql -d erp_test -f scripts/test_tax_rates.sql  # 複数税率
 psql -d erp_test -f scripts/test_received.sql   # 受領書類・スキャナ保存・タイムスタンプ
+psql -d erp_test -f scripts/test_convert.sql    # 見積→受注→納品→請求の変換
 node --experimental-strip-types --test supabase/functions/*/*.test.ts web/src/lib/*.test.ts   # Edge Function・CSV/ZIPの単体テスト（OpenSSLがあれば本物のタイムスタンプ応答も検証）
 ```
 
@@ -71,6 +72,7 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
 - [x] Edge Function `timestamp`（RFC 3161の要求・応答の解析はOpenSSLの本物の応答でテスト済み）。**認定事業者のTSAは未契約**（secret `TSA_URL` / `TSA_NAME` / `TSA_AUTH` 未設定のため付与は保留）。`scripts/verify_timestamp.sh` で再検証。**法令上は「総務大臣が認定する時刻認証業務」のものが必要**
 - [x] テスト: `scripts/test_scenario.sql`・`test_tax_rates.sql`・`test_received.sql`（2026-10-31 全項目合格。一次資料に合わせた修正を含む）、`supabase/functions/*/` の単体テスト
 - [x] 10・11 ダウンロードの求めへの出力（`20261101000010`・`11`、画面「出力」）：出力用ビュー、一覧CSV（受領書類・発行済み帳票・送付PDF）、ZIP（ファイル本体、発行済み帳票の固定内容JSON・単体HTML、SHA-256の照合つき）。国税庁 電子取引 問59。ブラウザでの出力は、ダミーのAPIでPlaywrightにより確認済み
+- [x] 12 見積 → 受注 → 納品 → 請求の変換（`20261101000012`）：`order_project`、`deliver_all`（全数納品）、`create_invoice_for_project`・`create_invoice_for_delivery`（案件・納品単位の請求書。締め請求は従来どおり）、`v_delivery_list`。画面：「見積」「納品」タブ、案件の変換パネル（①見積書 ②受注 ③納品書 ④請求書）。ダミーのAPIでPlaywrightにより画面の流れを確認済み
 - [x] システム概要書（`docs/システム概要書.md`）と、備付け書類の対応表（`docs/システム関係書類一覧.md`）。**操作マニュアルと事務手続の書類は未作成**、仕様書は v2.1 に更新済み（実装状況の列つき）
 - [x] 業務シナリオテスト（`scripts/test_scenario.sql`）全項目合格（2026-10-31。入金取消・帳票発行の項目を追加。以降の機能は上のテストファイルに分けた）
 
