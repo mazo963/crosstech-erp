@@ -11,7 +11,7 @@ export function TimestampStatus({ canWrite, refreshKey }: { canWrite: boolean; r
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.from("v_timestamp_status")
-      .select("subject_table, subject_id, label, deadline, status, first_gen_time").eq("voided", false).neq("status", "stamped").order("deadline");
+      .select("subject_table, subject_id, label, deadline, status, first_gen_time").eq("voided", false).not("status", "in", "(stamped,external)").order("deadline");
     if (error) setMsg(error.message);
     else setRows(data as Row[]);
   }, []);

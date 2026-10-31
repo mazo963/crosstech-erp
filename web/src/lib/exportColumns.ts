@@ -11,9 +11,9 @@ const IMPORTANCE = via({ important: "重要書類", general: "一般書類" });
 const CHANNEL = via({ email: "メール", web: "Webサイト・クラウド", edi: "EDI", cloud: "クラウドサービス", post: "郵送", hand: "手渡し", other: "その他" });
 const COLOR = via({ color: "カラー", grayscale: "グレースケール", mono: "白黒2値" });
 const TIMELY = via({ early: "7営業日以内", cycle: "2か月+7営業日以内", late: "期限超過" });
-const TS = via({ stamped: "付与済み", stamped_late: "付与済み（期限後）", pending: "付与待ち", overdue: "期限超過（未付与）" });
+const TS = via({ stamped: "付与済み", stamped_late: "付与済み（期限後）", pending: "付与待ち", overdue: "期限超過（未付与）", external: "自社では付与しない（Box等で保存）" });
 const DOC = via({ quote: "見積書", delivery_note: "納品書", invoice: "請求書" });
-const METHOD = via({ paper: "紙", email_pdf: "PDF（メール等）", other: "その他" });
+const METHOD = via({ paper: "紙", email_pdf: "PDF（メール等）", box: "Box保存", other: "その他" });
 
 export const RECEIVED_COLS: Col[] = [
   ["登録ID", "id"], ["保存の種類", "kind", KIND], ["書類の種類", "doc_category", CATEGORY], ["書類の区分", "importance", IMPORTANCE],

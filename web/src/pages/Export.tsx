@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { type Cell, toCsv } from "../lib/csv";
+import { saveBlob } from "../lib/download";
 import { type ZipEntry, makeZip } from "../lib/zip";
 import { ISSUED_COLS, RECEIVED_COLS, SENT_COLS, type Col, rowsOf, safeName, uniquePaths } from "../lib/exportColumns";
 import type { IssuedDoc } from "../lib/documents";
@@ -8,13 +9,7 @@ import type { IssuedDoc } from "../lib/documents";
 type Row = Record<string, unknown>;
 const MAX_BYTES = 300 * 1024 * 1024;
 
-function save(data: BlobPart, name: string, type: string) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([data], { type }));
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
+const save = saveBlob;
 const b64ToBytes = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 const sha256Hex = async (b: Uint8Array<ArrayBuffer>) =>
   Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", b)), (x) => x.toString(16).padStart(2, "0")).join("");

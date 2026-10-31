@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { type DocType, DOC_LABEL, type IssuedDoc, openDocument } from "../lib/documents";
 import { yen } from "../lib/format";
 import { DocumentRecords } from "./DocumentRecords";
+import { SendSteps } from "./SendSteps";
 import { DocumentView } from "./DocumentView";
 import { FitPage } from "./FitPage";
 
@@ -100,7 +101,8 @@ function DocumentDetail({ id, canWrite }: { id: string; canWrite: boolean }) {
           <button key={v.id} className={v.id === id ? "" : "secondary"} onClick={() => openDocument(v.id)}>版{v.version}{v.voided ? "（取消）" : ""}</button>
         ))}</p>
       )}
-      <DocumentRecords documentId={doc.id} voided={doc.voided} canWrite={canWrite} />
+      <SendSteps doc={doc} />
+      <DocumentRecords doc={doc} canWrite={canWrite} />
     </div>
     <aside className="split-side"><FitPage><DocumentView doc={doc} /></FitPage></aside>
     </div>

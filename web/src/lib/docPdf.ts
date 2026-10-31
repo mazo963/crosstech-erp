@@ -5,6 +5,8 @@ import { PDFDocument, PDFFont, PDFPage, degrees, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import type { DocContent } from "./documents.ts";
 import { DOC_LABEL } from "./documents.ts";
+import { jst } from "./format.ts";
+export { jst };
 
 export const PDF_TEMPLATE_VERSION = 1;
 
@@ -24,8 +26,6 @@ const fmt = (v: unknown) => {
 };
 const yen = (v: unknown) => (v == null ? "-" : `¥${fmt(v)}`);
 const pct = (r: unknown) => `${Math.round(Number(r) * 10000) / 100}%`;
-/** 発行日時は日本時間で表示する（保存はUTC）。 */
-export const jst = (iso: string) => new Date(new Date(iso).getTime() + 9 * 3600_000).toISOString().slice(0, 16).replace("T", " ");
 
 export async function makeDocPdf(c: DocContent, meta: PdfMeta, fontBytes: Uint8Array): Promise<PdfResult> {
   // フォントの部分埋め込みが、名前に乱数を使うので、固定の疑似乱数に差し替える（終わったら戻す）

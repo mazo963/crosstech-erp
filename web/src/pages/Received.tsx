@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { yen } from "../lib/format";
 import { TS_STATUS } from "../lib/timestamp";
+import { saveBlob } from "../lib/download";
 import { CATEGORY, ReceivedForm } from "./ReceivedForm";
 import { TimestampStatus } from "./TimestampStatus";
 
@@ -47,11 +48,7 @@ export function Received({ canWrite }: { canWrite: boolean }) {
   async function download(r: Row) {
     const { data, error } = await supabase.rpc("received_file_base64", { p_id: r.id });
     if (error || typeof data !== "string") return setMsg(error?.message ?? "取得できません");
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([Uint8Array.from(atob(data), (c) => c.charCodeAt(0))]));
-    a.download = r.file_name;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    saveBlob(Uint8Array.from(atob(data), (c) => c.charCodeAt(0)) as unknown as BlobPart, r.file_name);
   }
   async function link(r: Row) {
     const ref = window.prompt(`${r.counterparty_name} ${r.file_name} に関連する帳簿の伝票番号を入力してください（追記のみ・後から変更できません）`);

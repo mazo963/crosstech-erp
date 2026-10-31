@@ -2,7 +2,7 @@
 \set ON_ERROR_STOP 1
 insert into auth.users values ('00000000-0000-0000-0000-000000000001','admin@x'),('00000000-0000-0000-0000-000000000002','stranger@x');
 insert into public.staff (id, name, role, worker_code) values ('00000000-0000-0000-0000-000000000001','松田','admin','matsuda');
-update public.company_settings set invoice_reg_no='T1234567890123', tax_rounding='floor';
+update public.company_settings set invoice_reg_no='T1234567890123', tax_rounding='floor', own_timestamp=true;
 
 set role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001', false);
@@ -218,6 +218,16 @@ do $$ declare n0 int; n1 int; pq jsonb; pd jsonb; proj uuid := (select id from p
   if pq <> (select content from issued_documents where id = issue_document('quote', proj)) then raise exception 'NG: 見積書のプレビューと発行内容が違う'; end if;
   if pd <> (select content from issued_documents where id = issue_document('delivery_note', dv)) then raise exception 'NG: 納品書のプレビューと発行内容が違う'; end if;
   raise notice 'OK プレビューは保存されず、発行した内容と一致する（見積書・納品書）';
+end $$;
+-- Box保存の交付記録、自社でタイムスタンプを付与しない設定のときの表示
+insert into document_deliveries (document_id, method, recipient) values (current_setting('t.doc2')::uuid, 'box', 'Box取込アドレス');
+update company_settings set box_import_email = 'box-import@example.com', mail_signature = '署名', own_timestamp = false where id = 1;
+do $$ declare r record; begin
+  if (select deliveries from v_export_issued where id = current_setting('t.doc2')::uuid) not like '%Box保存 Box取込アドレス%' then raise exception 'NG: Box保存の出力'; end if;
+  if (select timestamp_status from v_export_sent_files where id = current_setting('t.pdf')::uuid) <> 'external' then raise exception 'NG: 自社で付与しない設定のとき external'; end if;
+  update company_settings set own_timestamp = true where id = 1;
+  if (select timestamp_status from v_export_sent_files where id = current_setting('t.pdf')::uuid) <> 'pending' then raise exception 'NG: 自社で付与する設定のとき pending'; end if;
+  raise notice 'OK 交付の方法に「Box保存」を記録でき、自社でタイムスタンプを付与しない設定では「external」（期限超過の警告なし）になる';
 end $$;
 -- 検索（取引年月日の範囲・金額の範囲・取引先の組合せ）
 do $$ declare n int; begin

@@ -13,7 +13,7 @@
 |---|---|
 | 技術基盤 | **Supabase**（PostgreSQL・Auth・Edge Functions）＋ **GitHub**（ソース管理・Actions） |
 | 画面 | Vite + React + TypeScript（`web/`）。静的サイトとしてホスティング |
-| MFとの関係 | **当面は併用し、後で決める**。ERPは控え・社内用の帳票まで。正式なインボイスはMFで発行し、MFの番号を `invoices.mf_invoice_no` に控える |
+| MFとの関係 | **案A（2026-11-01 決定）**：見積書・納品書・請求書はERPで発行し、PDFをメールで送る。**送ったPDFと受け取った書類は MF クラウドBox に保存**する（Box の「メール取込」。宛先が複数だと保存されないので、お客様宛とBox宛は別のメール）。ERPの請求書を正式にするかは設定（`erp_invoice_official`）。MF クラウド会計は使っていない。MF クラウド請求書は契約中（今後の扱いは未定）。Box の JIIMA 認証などは**未確認** |
 | 受注・生産管理システム（既存 HTML＋GAS＋Drive） | **ERPが親、受注は加工現場用に残す**。案件・製番はERPで1回だけ登録。受注システムからは、加工完了・出荷の進捗を製番（`product_no`）で**読み取りのみ**同期する |
 | AI（Sonnet / Haiku） | **システム内のAI機能**として使う。見積依頼メール・注文書PDFから案件の下書きを作る。既定は Haiku、PDF・難しい入力は Sonnet。**AIの結果は必ず人が確認してから保存**（自動保存しない） |
 
@@ -50,7 +50,7 @@ for f in scripts/test_stub_supabase.sql supabase/migrations/*.sql; do psql -v ON
 psql -d erp_test -f scripts/test_scenario.sql   # NOTICE に「OK ...」が並べば合格。「NG」で止まれば不合格
 psql -d erp_test -f scripts/test_tax_rates.sql  # 複数税率
 psql -d erp_test -f scripts/test_received.sql   # 受領書類・スキャナ保存・タイムスタンプ
-psql -d erp_test -f scripts/test_convert.sql    # 見積→受注→納品→請求の変換
+psql -d erp_test -f scripts/test_convert.sql    # 見積→受注→納品→請求の変換（テストのファイルは、いずれも own_timestamp=true で実行）
 node --experimental-strip-types --test supabase/functions/*/*.test.ts web/src/lib/*.test.ts   # Edge Function・CSV/ZIPの単体テスト（OpenSSLがあれば本物のタイムスタンプ応答も検証）
 ```
 
@@ -74,6 +74,7 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
 - [x] 10・11 ダウンロードの求めへの出力（`20261101000010`・`11`、画面「出力」）：出力用ビュー、一覧CSV（受領書類・発行済み帳票・送付PDF）、ZIP（ファイル本体、発行済み帳票の固定内容JSON・単体HTML、SHA-256の照合つき）。国税庁 電子取引 問59。ブラウザでの出力は、ダミーのAPIでPlaywrightにより確認済み
 - [x] 12 見積 → 受注 → 納品 → 請求の変換（`20261101000012`）：`order_project`、`deliver_all`（全数納品）、`create_invoice_for_project`・`create_invoice_for_delivery`（案件・納品単位の請求書。締め請求は従来どおり）、`v_delivery_list`。画面：「見積」「納品」タブ、案件の変換パネル（①見積書 ②受注 ③納品書 ④請求書）。ダミーのAPIでPlaywrightにより画面の流れを確認済み
 - [x] 13 帳票の発行イメージ（`20261101000013`）：`build_document_content`（記載内容の組み立て。発行とプレビューで共通）、`preview_document`（保存しない）。画面を、左メニュー＋内容は全幅、帳票は左右2列（右にA4の発行イメージ）に変更（ダミーAPI＋Playwrightで確認。全ページで内容の幅が一定）
+- [x] 14 送付の流れ（案A）（`20261101000014`）：PDF生成（日本語フォント埋め込み、同じ内容なら同じバイト列）、お客様宛・Box宛のメール作成（mailto）、交付の方法に「Box保存」、設定画面（自社情報・請求書の正式化・Box取込アドレス・署名・タイムスタンプ自社付与・スタッフ）、`own_timestamp`（既定オフ）。ブラウザでPDFのダウンロード・メール・交付の記録・保存PDFの同一性を確認済み
 - [x] システム概要書（`docs/システム概要書.md`）と、備付け書類の対応表（`docs/システム関係書類一覧.md`）。**操作マニュアルと事務手続の書類は未作成**、仕様書は v2.1 に更新済み（実装状況の列つき）
 - [x] 業務シナリオテスト（`scripts/test_scenario.sql`）全項目合格（2026-10-31。入金取消・帳票発行の項目を追加。以降の機能は上のテストファイルに分けた）
 
@@ -81,7 +82,7 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
 ### 残作業（この順で進める）
 1. [x] **Edge Function `ai-extract`**（実装・単体テスト合格 2026-10-30。Deno/Supabase 上での実機確認は未）：メール本文 / 注文書PDF → 案件下書きJSON。Anthropic Messages API を tool use で構造化出力。モデルは環境変数 `AI_MODEL_DEFAULT`（Haiku）/ `AI_MODEL_ADVANCED`（Sonnet）で切替（モデルIDはコードに直書きしない）。`ai_extractions` にトークン数を記録し、`AI_MONTHLY_TOKEN_LIMIT` 超過で停止。ユーザーのJWTでDBに接続し、RLSを効かせる
 2. [x] **Edge Function `juchu-sync`**（実装・単体テスト合格 2026-10-30。実GASのJSON形式・Supabase上での確認は未）：受注GASの doGet（受注JSON配列）を取得 → `items[].productNo` で照合 → `project_items.juchu_completed_at / juchu_shipped_date / juchu_synced_at` を更新。GAS URL は Supabase の secret `JUCHU_GAS_URL`。受注側へは書き込まない
-3. [ ] **画面 `web/`**（ログイン・スタッフ確認・ダッシュボード・得意先/外注先マスタ・案件（品目行・AI取込）・分納記録・締め請求（作成/発行/取消）・入金登録（銀行・口座番号、取消）・帳票（発行・固定・印刷・検索・交付記録・送付PDF保存）・受領書類（電子取引・スキャナ保存・タイムスタンプ状況）・税率まで実装、ビルド成功 2026-10-30。以下の残りは未実装）：ログイン（Supabase Auth。固定の admin/crosstech は使わない）、ダッシュボード、得意先・外注先マスタ、案件（品目行・AI取込ボタン）、分納記録、締め請求の作成・発行、入金登録、メール作成（mailto でTO/CC/件名/本文を自動入力）、設定（自社情報・スタッフ）
+3. [ ] **画面 `web/`**（ログイン・スタッフ確認・ダッシュボード・得意先/外注先マスタ・案件（品目行・AI取込）・分納記録・締め請求（作成/発行/取消）・入金登録（銀行・口座番号、取消）・帳票（発行・固定・印刷・検索・交付記録・送付PDF保存）・受領書類（電子取引・スキャナ保存・タイムスタンプ状況）・税率・設定・PDF生成とメール作成まで実装、ビルド成功 2026-10-30。以下の残りは未実装）：ログイン（Supabase Auth。固定の admin/crosstech は使わない）、ダッシュボード、得意先・外注先マスタ、案件（品目行・AI取込ボタン）、分納記録、締め請求の作成・発行、入金登録、メール作成（mailto でTO/CC/件名/本文を自動入力）、設定（自社情報・スタッフ）
 4. [ ] **GitHub Actions**：
    - CI：PostgreSQL サービスで §5 のテストを実行、`web/` のビルド
    - デプロイ：`web/` の静的ビルド
@@ -97,6 +98,7 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
 - 外注仕入の支払管理をどこまでやるか（支払予定表・振込データ作成まで必要か）
 - 受注システムの「加工完了 → 納品処理ToDo」を、ERPの分納記録とどうつなぐか（二重入力にしない）
 - 在宅ワーク管理ダッシュボードが、将来ERPのデータを読むか
+- **MF クラウドBox**：JIIMA 認証（電子取引・スキャナ保存）、保存件数の上限とプラン、取込メールの送信元の制限、API の有無が**未確認**。確認できたら、ERPの「受領書類」「タイムスタンプ」機能を取り止められる（現在は残してある）
 - **電子帳簿保存法**（`docs/電帳法対応方針.md`。国税庁の一次資料で確認済み、出典は §9）：**総務大臣認定のタイムスタンプ事業者の選定・契約**（スキャナ保存は実質必須。受領した電子取引は、タイムスタンプか事務処理規程が必要。自社システムの「訂正削除不可」だけでは足りない）。**システム概要書・操作説明書・事務手続の書類が未作成**（自社開発のため必要）。事務処理規程の要否、業務処理サイクル方式（最長2か月）を使うか。送付PDFの自動保存が未了。バックアップは法令上の要件ではないが、7年保存のため強く推奨
 - **飲食料品の税率引下げ（1%）**：国税庁の令和8年9月資料では、**令和9年4月1日から令和11年3月31日まで**（来年1月ではない）。「法案が成立した場合」の内容なので、**成立を確認してから**画面の「税率」で登録する。経過措置（定期供給契約・通信販売は8%のまま）への対応設計は、内容が確定してから
 

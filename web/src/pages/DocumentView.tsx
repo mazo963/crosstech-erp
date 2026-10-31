@@ -1,6 +1,6 @@
 import type { IssuedDoc } from "../lib/documents";
 import { DOC_LABEL } from "../lib/documents";
-import { yen } from "../lib/format";
+import { jst, yen } from "../lib/format";
 
 /** 発行時に固定した内容から帳票を描く（元データではなく固定内容を使うので、再印刷しても同じになる）。 */
 // 税率の表示（0.0800 → 8%、0.0100 → 1%）
@@ -56,7 +56,7 @@ export function DocumentView({ doc, preview = false }: { doc: IssuedDoc; preview
       {hasReduced && <p className="spec">※は軽減税率の対象品目です。</p>}
       {isInvoice && c.bank_info && <p className="bank">お振込先: {c.bank_info}</p>}
       {c.notes && <p className="notes">備考: {c.notes}</p>}
-      <p className="foot">{preview ? "発行イメージ（まだ発行されていません）" : `発行 ${doc.issued_at.slice(0, 16).replace("T", " ")}　版 ${doc.version}　内容ハッシュ ${doc.content_sha256.slice(0, 12)}`}</p>
+      <p className="foot">{preview ? "発行イメージ（まだ発行されていません）" : `発行 ${jst(doc.issued_at)}　版 ${doc.version}　内容ハッシュ ${doc.content_sha256.slice(0, 12)}`}</p>
     </div>
   );
 }

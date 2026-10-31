@@ -11,5 +11,5 @@ export async function requestTimestamp(table: SubjectTable, id: string): Promise
 }
 
 export const TS_STATUS: Record<string, string> = {
-  stamped: "付与済み", stamped_late: "付与済み（期限後）", pending: "付与待ち", overdue: "期限超過（未付与）",
+  stamped: "付与済み", stamped_late: "付与済み（期限後）", pending: "付与待ち", overdue: "期限超過（未付与）", external: "自社では付与しない（Box等で保存）",
 };

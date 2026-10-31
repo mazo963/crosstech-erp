@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { requestTimestamp } from "../lib/timestamp";
+import { useSettings } from "../lib/useSettings";
 
 export const CATEGORY: [string, string][] = [
   ["invoice", "請求書"], ["receipt", "領収書"], ["delivery_note", "納品書"], ["quote", "見積書"],
@@ -15,6 +16,7 @@ export function ReceivedForm({ onDone, onCancel }: { onDone: (message: string) =
     kind: "electronic", doc_category: "invoice", doc_date: today(), amount: "", counterparty_name: "", related_ref: "",
     received_on: today(), channel: "email", scanned_on: today(), resolution_dpi: "300", color_mode: "color", page_size: "A4", page_count: "1",
   });
+  const { settings } = useSettings();
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,9 +39,9 @@ export function ReceivedForm({ onDone, onCancel }: { onDone: (message: string) =
     };
     const { data, error } = await supabase.rpc("register_received_document", { p_meta: meta, p_base64: await toBase64(file) });
     if (error) { setBusy(false); return setError(error.message); }
-    const ts = await requestTimestamp("received_documents", data as string);
+    const ts = settings?.own_timestamp ? await requestTimestamp("received_documents", data as string) : null;
     setBusy(false);
-    onDone(`登録しました。タイムスタンプ: ${ts.ok ? ts.message : `保留（${ts.message}）`}`);
+    onDone(ts ? `登録しました。タイムスタンプ: ${ts.ok ? ts.message : `保留（${ts.message}）`}` : "登録しました（タイムスタンプは、設定で自社付与をオフにしているため、付与していません）");
   }
 
   return (

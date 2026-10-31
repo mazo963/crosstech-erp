@@ -6,6 +6,7 @@ insert into public.staff (id, name, role, worker_code) values
   ('00000000-0000-0000-0000-000000000001','松田','admin','matsuda'),
   ('00000000-0000-0000-0000-000000000004','閲覧','viewer','other') on conflict do nothing;
 
+update public.company_settings set own_timestamp = true; -- 自社でタイムスタンプを付与する設定でテストする
 set role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001', false);
 

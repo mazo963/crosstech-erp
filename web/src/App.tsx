@@ -11,6 +11,7 @@ import { parseRoute, clearRoute, type Route } from "./lib/nav";
 import { Quotes } from "./pages/Quotes";
 import { DeliveryList } from "./pages/DeliveryList";
 import { TaxRates } from "./pages/TaxRates";
+import { Settings } from "./pages/Settings";
 import { Received } from "./pages/Received";
 import { Export } from "./pages/Export";
 import { MasterPage } from "./pages/MasterPage";
@@ -21,7 +22,7 @@ const groups = [
   ["", ["ダッシュボード"]],
   ["売上", ["見積", "案件", "納品", "請求", "入金"]],
   ["書類", ["帳票", "受領書類", "出力"]],
-  ["マスタ", ["得意先", "外注先", "税率"]],
+  ["マスタ・設定", ["得意先", "外注先", "税率", "設定"]],
 ] as const;
 type Tab = (typeof groups)[number][1][number];
 
@@ -75,6 +76,7 @@ export function App() {
         {tab === "帳票" && <Documents docId={route?.kind === "doc" ? route.id : null} canWrite={staff.role !== "viewer"} />}
         {tab === "受領書類" && <Received canWrite={staff.role !== "viewer"} />}
         {tab === "出力" && <Export who={`${staff.name}（${staff.role}）`} />}
+        {tab === "設定" && <Settings isAdmin={staff.role === "admin"} />}
         {tab === "税率" && <TaxRates isAdmin={staff.role === "admin"} />}
         {tab === "得意先" && <MasterPage def={customers} canWrite={staff.role !== "viewer"} />}
         {tab === "外注先" && <MasterPage def={vendors} canWrite={staff.role !== "viewer"} />}
