@@ -10,10 +10,11 @@ import { Documents } from "./pages/Documents";
 import { docIdFromHash } from "./lib/documents";
 import { TaxRates } from "./pages/TaxRates";
 import { Received } from "./pages/Received";
+import { Export } from "./pages/Export";
 import { MasterPage } from "./pages/MasterPage";
 import { customers, vendors } from "./lib/masters";
 
-const tabs = ["ダッシュボード", "案件", "請求", "入金", "帳票", "受領書類", "税率", "得意先", "外注先"] as const;
+const tabs = ["ダッシュボード", "案件", "請求", "入金", "帳票", "受領書類", "出力", "税率", "得意先", "外注先"] as const;
 
 export function App() {
   const { session, staff, loading } = useSession();
@@ -56,6 +57,7 @@ export function App() {
         {tab === "入金" && <Payments canWrite={staff.role !== "viewer"} />}
         {tab === "帳票" && <Documents docId={docId} canWrite={staff.role !== "viewer"} />}
         {tab === "受領書類" && <Received canWrite={staff.role !== "viewer"} />}
+        {tab === "出力" && <Export who={`${staff.name}（${staff.role}）`} />}
         {tab === "税率" && <TaxRates isAdmin={staff.role === "admin"} />}
         {tab === "得意先" && <MasterPage def={customers} canWrite={staff.role !== "viewer"} />}
         {tab === "外注先" && <MasterPage def={vendors} canWrite={staff.role !== "viewer"} />}

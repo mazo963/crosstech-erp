@@ -50,7 +50,7 @@ for f in scripts/test_stub_supabase.sql supabase/migrations/*.sql; do psql -v ON
 psql -d erp_test -f scripts/test_scenario.sql   # NOTICE に「OK ...」が並べば合格。「NG」で止まれば不合格
 psql -d erp_test -f scripts/test_tax_rates.sql  # 複数税率
 psql -d erp_test -f scripts/test_received.sql   # 受領書類・スキャナ保存・タイムスタンプ
-node --experimental-strip-types --test supabase/functions/*/*.test.ts   # Edge Function の単体テスト（OpenSSLがあれば本物のタイムスタンプ応答も検証）
+node --experimental-strip-types --test supabase/functions/*/*.test.ts web/src/lib/*.test.ts   # Edge Function・CSV/ZIPの単体テスト（OpenSSLがあれば本物のタイムスタンプ応答も検証）
 ```
 
 Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも同じマイグレーションが適用される。
@@ -70,6 +70,7 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
 - [x] 09 国税庁の一次資料に基づく修正（`20261101000009`）：暦の2か月、重要書類のカラー必須、入力期間を過ぎた重要書類は紙の原本保存（`paper_original_required`）、帳簿への紐づけは登録後に追記（`received_document_links`）、税区分に新聞の定期購読を追加
 - [x] Edge Function `timestamp`（RFC 3161の要求・応答の解析はOpenSSLの本物の応答でテスト済み）。**認定事業者のTSAは未契約**（secret `TSA_URL` / `TSA_NAME` / `TSA_AUTH` 未設定のため付与は保留）。`scripts/verify_timestamp.sh` で再検証。**法令上は「総務大臣が認定する時刻認証業務」のものが必要**
 - [x] テスト: `scripts/test_scenario.sql`・`test_tax_rates.sql`・`test_received.sql`（2026-10-31 全項目合格。一次資料に合わせた修正を含む）、`supabase/functions/*/` の単体テスト
+- [x] 10 ダウンロードの求めへの出力（`20261101000010`、画面「出力」）：出力用ビュー、一覧CSV（受領書類・発行済み帳票・送付PDF）、ファイル本体のZIP（SHA-256の照合つき）。国税庁 電子取引 問59
 - [x] システム概要書（`docs/システム概要書.md`）と、備付け書類の対応表（`docs/システム関係書類一覧.md`）。**操作マニュアルと事務手続の書類は未作成**、仕様書は v2.1 に更新済み（実装状況の列つき）
 - [x] 業務シナリオテスト（`scripts/test_scenario.sql`）全項目合格（2026-10-31。入金取消・帳票発行の項目を追加。以降の機能は上のテストファイルに分けた）
 
@@ -93,7 +94,7 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
 - 外注仕入の支払管理をどこまでやるか（支払予定表・振込データ作成まで必要か）
 - 受注システムの「加工完了 → 納品処理ToDo」を、ERPの分納記録とどうつなぐか（二重入力にしない）
 - 在宅ワーク管理ダッシュボードが、将来ERPのデータを読むか
-- **電子帳簿保存法**（`docs/電帳法対応方針.md`。国税庁の一次資料で確認済み、出典は §9）：**総務大臣認定のタイムスタンプ事業者の選定・契約**（スキャナ保存は実質必須。受領した電子取引は、タイムスタンプか事務処理規程が必要。自社システムの「訂正削除不可」だけでは足りない）。**システム概要書・操作説明書・事務手続の書類が未作成**（自社開発のため必要）。事務処理規程の要否、業務処理サイクル方式（最長2か月）を使うか。CSV出力（ダウンロードの求め）、送付PDFの自動保存が未了。バックアップは法令上の要件ではないが、7年保存のため強く推奨
+- **電子帳簿保存法**（`docs/電帳法対応方針.md`。国税庁の一次資料で確認済み、出典は §9）：**総務大臣認定のタイムスタンプ事業者の選定・契約**（スキャナ保存は実質必須。受領した電子取引は、タイムスタンプか事務処理規程が必要。自社システムの「訂正削除不可」だけでは足りない）。**システム概要書・操作説明書・事務手続の書類が未作成**（自社開発のため必要）。事務処理規程の要否、業務処理サイクル方式（最長2か月）を使うか。送付PDFの自動保存が未了。バックアップは法令上の要件ではないが、7年保存のため強く推奨
 - **飲食料品の税率引下げ（1%）**：国税庁の令和8年9月資料では、**令和9年4月1日から令和11年3月31日まで**（来年1月ではない）。「法案が成立した場合」の内容なので、**成立を確認してから**画面の「税率」で登録する。経過措置（定期供給契約・通信販売は8%のまま）への対応設計は、内容が確定してから
 
 ## 8. 関連

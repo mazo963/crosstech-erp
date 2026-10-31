@@ -166,12 +166,26 @@ do $$ begin
   raise exception 'NG: タイムスタンプの更新が通った';
 exception when others then if sqlerrm like 'NG:%' then raise; end if; raise notice 'OK タイムスタンプは追記のみ: %', sqlerrm; end $$;
 
+-- ダウンロードの求め用の出力ビュー（ファイル本体は含まない。タイムスタンプの状況・取消も出る）
+do $$ declare r record; begin
+  select * into r from v_export_received where id = current_setting('t.e1')::uuid;
+  if r.counterparty_name <> 'テスト外注' or r.amount <> 110000 or r.timestamp_status <> 'stamped' or r.timestamp_tsa <> 'テストTSA' or r.sha256 is null then
+    raise exception 'NG: 出力ビュー %', to_jsonb(r); end if;
+  if (select count(*) from v_export_received where kind = 'scanned' and importance = 'important' and paper_original_required) < 1 then raise exception 'NG: 紙の原本保存の出力'; end if;
+  if (select link_refs from v_export_received where id = current_setting('t.u1')::uuid) <> 'PUR-777' then raise exception 'NG: 紐づけの出力'; end if;
+  raise notice 'OK 受領書類の出力ビュー（検索項目・ハッシュ・タイムスタンプ・紙の原本保存・紐づけ）';
+end $$;
+
 -- 取消と再登録
 do $$ begin
   perform void_received_document(current_setting('t.e1')::uuid, '  ');
   raise exception 'NG: 理由なしの取消が通った';
 exception when others then if sqlerrm like 'NG:%' then raise; end if; raise notice 'OK 理由なしの取消を拒否: %', sqlerrm; end $$;
 select void_received_document(:'e1', '登録ミス');
+do $$ begin
+  if (select voided from v_export_received where id = current_setting('t.e1')::uuid) is not true then raise exception 'NG: 取消の出力'; end if;
+  raise notice 'OK 取消した書類も出力に含まれる（取消の有無・理由つき）';
+end $$;
 select register_received_document(jsonb_build_object('kind','electronic','doc_category','invoice','doc_date',current_date-10,'amount',110000,
   'counterparty_name','テスト外注','received_on',current_date-3,'channel','email','file_name','inv1.pdf'),
   encode(convert_to('%PDF-1.4 inv1','UTF8'),'base64'));

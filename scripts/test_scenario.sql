@@ -193,6 +193,14 @@ exception when others then
   if sqlerrm like 'NG:%' then raise; end if;
   raise notice 'OK 交付記録は追記のみ: %', sqlerrm;
 end $$;
+-- 出力ビュー（発行済み帳票・送付PDF）
+do $$ declare r record; begin
+  select * into r from v_export_issued where id = current_setting('t.doc2')::uuid;
+  if r.deliveries not like '%PDF test@example.com%' or r.sent_pdf_count <> 1 or r.doc_no <> 'INV2610-0001' then raise exception 'NG: 帳票の出力ビュー %', to_jsonb(r); end if;
+  select * into r from v_export_sent_files where id = current_setting('t.pdf')::uuid;
+  if r.file_name <> 'INV2610-0001.pdf' or r.delivery_method <> 'email_pdf' or r.timestamp_status <> 'pending' or r.sha256 is null then raise exception 'NG: 送付PDFの出力ビュー %', to_jsonb(r); end if;
+  raise notice 'OK 帳票・送付PDFの出力ビュー（交付記録・ハッシュ・タイムスタンプ状況）';
+end $$;
 -- 検索（取引年月日の範囲・金額の範囲・取引先の組合せ）
 do $$ declare n int; begin
   select count(*) into n from issued_documents
