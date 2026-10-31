@@ -3,10 +3,11 @@ import { emptyItem } from "../lib/projects";
 import { yen } from "../lib/format";
 
 type Opt = { id: string; name: string };
+export type TaxCat = { code: string; name: string };
 
 /** 品目行の入力表。金額は保存済み行のみ、DBの view（v_item_progress）の値を表示する。 */
 export function ItemsEditor(props: {
-  items: ItemForm[]; vendors: Opt[]; amounts: Record<string, number>; readOnly: boolean;
+  items: ItemForm[]; vendors: Opt[]; taxCategories: TaxCat[]; amounts: Record<string, number>; readOnly: boolean;
   onChange: (items: ItemForm[]) => void;
 }) {
   const { items, onChange } = props;
@@ -31,6 +32,11 @@ export function ItemsEditor(props: {
             <label>販売単価（円）{inp(i, "sale_unit_price", { type: "number", step: "0.01", min: "0" })}</label>
             <label>原価単価（円）{inp(i, "cost_unit_price", { type: "number", step: "0.01", min: "0" })}</label>
             <label>納期{inp(i, "due_date", { type: "date" })}</label>
+            <label>税区分（税率は納品日の時点で決まります）
+              <select value={it.tax_category} onChange={(e) => set(i, "tax_category", e.target.value)} disabled={props.readOnly}>
+                {props.taxCategories.map((t) => <option key={t.code} value={t.code}>{t.name}</option>)}
+              </select>
+            </label>
             <label>外注先（空欄=自社加工）
               <select value={it.vendor_id} onChange={(e) => set(i, "vendor_id", e.target.value)} disabled={props.readOnly}>
                 <option value="">自社</option>

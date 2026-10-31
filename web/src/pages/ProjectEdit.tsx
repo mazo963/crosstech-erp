@@ -22,6 +22,7 @@ export function ProjectEdit({ id, myId, canWrite, onBack }: {
   const [customers, setCustomers] = useState<Opt[]>([]);
   const [vendors, setVendors] = useState<Opt[]>([]);
   const [staff, setStaff] = useState<Opt[]>([]);
+  const [taxCategories, setTaxCategories] = useState<{ code: string; name: string }[]>([{ code: "standard", name: "標準税率" }]);
   const [amounts, setAmounts] = useState<Record<string, number>>({});
   const [summary, setSummary] = useState<Summary | null>(null);
   const [ai, setAi] = useState<AiResult | null>(null);
@@ -54,6 +55,7 @@ export function ProjectEdit({ id, myId, canWrite, onBack }: {
     supabase.from("customers").select("id, name").eq("active", true).order("name").then((r) => setCustomers((r.data as Opt[]) ?? []));
     supabase.from("vendors").select("id, name").eq("active", true).order("name").then((r) => setVendors((r.data as Opt[]) ?? []));
     supabase.from("staff").select("id, name").eq("active", true).order("name").then((r) => setStaff((r.data as Opt[]) ?? []));
+    supabase.from("tax_categories").select("code, name").eq("active", true).order("sort_order").then((r) => r.data && setTaxCategories(r.data));
     if (id) load(id);
   }, [id]);
 
@@ -164,7 +166,7 @@ export function ProjectEdit({ id, myId, canWrite, onBack }: {
         <label>備考（帳票に印字）<textarea rows={2} value={head.notes} onChange={(e) => setH("notes", e.target.value)} disabled={ro} /></label>
         <label>社内メモ（帳票に出ません）<textarea rows={2} value={head.internal_memo} onChange={(e) => setH("internal_memo", e.target.value)} disabled={ro} /></label>
       </div>
-      <ItemsEditor items={items} vendors={vendors} amounts={amounts} readOnly={ro} onChange={setItems} />
+      <ItemsEditor items={items} vendors={vendors} taxCategories={taxCategories} amounts={amounts} readOnly={ro} onChange={setItems} />
       {summary && (
         <div className="card row">
           <span>売上 {yen(summary.sales_amount)}</span><span>原価 {yen(summary.cost_amount)}</span>

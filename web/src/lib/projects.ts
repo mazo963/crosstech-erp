@@ -11,6 +11,7 @@ export type ItemForm = {
   cost_unit_price: string;
   vendor_id: string;
   due_date: string;
+  tax_category: string;
 };
 
 export type HeadForm = {
@@ -32,7 +33,7 @@ export const STATUS: [string, string][] = [
 
 export const emptyItem = (): ItemForm => ({
   product_no: "", customer_part_no: "", name: "", spec: "", quantity: "1", unit: "個",
-  sale_unit_price: "0", cost_unit_price: "0", vendor_id: "", due_date: "",
+  sale_unit_price: "0", cost_unit_price: "0", vendor_id: "", due_date: "", tax_category: "standard",
 });
 
 export const emptyHead = (leadStaffId = ""): HeadForm => ({
@@ -57,7 +58,7 @@ export function itemPayload(it: ItemForm) {
     customer_part_no: nul(it.customer_part_no), name: it.name.trim(), spec: nul(it.spec),
     quantity: Number(it.quantity), unit: it.unit.trim() || "個",
     sale_unit_price: Number(it.sale_unit_price || 0), cost_unit_price: Number(it.cost_unit_price || 0),
-    vendor_id: nul(it.vendor_id), due_date: nul(it.due_date),
+    vendor_id: nul(it.vendor_id), due_date: nul(it.due_date), tax_category: it.tax_category || "standard",
   };
 }
 
@@ -67,6 +68,7 @@ export function itemFromRow(r: Record<string, unknown>): ItemForm {
     id: r.id as string, product_no: s(r.product_no), customer_part_no: s(r.customer_part_no), name: s(r.name),
     spec: s(r.spec), quantity: s(r.quantity), unit: s(r.unit), sale_unit_price: s(r.sale_unit_price),
     cost_unit_price: s(r.cost_unit_price), vendor_id: s(r.vendor_id), due_date: s(r.due_date),
+    tax_category: s(r.tax_category) || "standard",
   };
 }
 

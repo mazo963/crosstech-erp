@@ -6,6 +6,7 @@ export const DOC_LABEL: Record<DocType, string> = { quote: "見積書", delivery
 export type DocLine = {
   product_no?: string | null; name?: string; description?: string; spec?: string | null;
   quantity: number; unit?: string | null; unit_price: number; amount: number; due_date?: string | null;
+  tax_rate?: number; is_reduced?: boolean;
 };
 
 export type DocContent = {
@@ -13,8 +14,8 @@ export type DocContent = {
   project_no?: string; customer_po_no?: string | null;
   issuer: { company_name: string; invoice_reg_no: string | null; postal_code: string | null; address: string | null; tel: string | null; email: string | null };
   customer: { id: string; name: string; postal_code: string | null; address: string | null; contact_name: string | null };
-  lines: DocLine[]; subtotal: number; tax_rate?: number; tax?: number; total?: number;
-  tax_breakdown?: { rate: number; base: number; tax: number }[];
+  lines: DocLine[]; subtotal: number; tax?: number; total?: number;
+  tax_breakdown?: { rate: number; reduced: boolean; base: number; tax: number }[];
   official?: boolean; mf_invoice_no?: string | null; bank_info?: string | null; period_from?: string | null; period_to?: string | null;
 };
 

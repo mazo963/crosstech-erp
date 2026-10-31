@@ -8,7 +8,8 @@ type Inv = {
   due_date: string | null; subtotal: number; tax_rate: number; tax: number; total: number; status: string;
   mf_invoice_no: string | null; notes: string | null; allocated: number; balance: number;
 };
-type Line = { id: string; description: string; quantity: number; unit_price: number; amount: number };
+type Line = { id: string; description: string; quantity: number; unit_price: number; amount: number; is_reduced: boolean; tax_rate: number };
+type Sum = { tax_rate: number; is_reduced: boolean; taxable_amount: number; tax_amount: number };
 
 export const INVOICE_STATUS: Record<string, string> = { draft: "下書き", issued: "発行済", void: "取消" };
 
@@ -16,18 +17,21 @@ export const INVOICE_STATUS: Record<string, string> = { draft: "下書き", issu
 export function InvoiceDetail({ id, canWrite, onBack }: { id: string; canWrite: boolean; onBack: () => void }) {
   const [inv, setInv] = useState<Inv | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
+  const [sums, setSums] = useState<Sum[]>([]);
   const [mfNo, setMfNo] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [a, b] = await Promise.all([
+    const [a, b, c] = await Promise.all([
       supabase.from("v_invoice_balance").select("*").eq("id", id).single(),
-      supabase.from("invoice_lines").select("id, description, quantity, unit_price, amount").eq("invoice_id", id).order("description"),
+      supabase.from("invoice_lines").select("id, description, quantity, unit_price, amount, is_reduced, tax_rate").eq("invoice_id", id).order("description"),
+      supabase.from("invoice_tax_summary").select("tax_rate, is_reduced, taxable_amount, tax_amount").eq("invoice_id", id).order("tax_rate", { ascending: false }),
     ]);
-    if (a.error || b.error) return setError((a.error ?? b.error)!.message);
+    if (a.error || b.error || c.error) return setError((a.error ?? b.error ?? c.error)!.message);
     setInv(a.data as Inv);
     setMfNo((a.data as Inv).mf_invoice_no ?? "");
     setLines(b.data as Line[]);
+    setSums(c.data as Sum[]);
   }, [id]);
   useEffect(() => { load(); }, [load]);
 
@@ -55,10 +59,12 @@ export function InvoiceDetail({ id, canWrite, onBack }: { id: string; canWrite: 
         <table>
           <thead><tr><th>内容</th><th>数量</th><th>単価</th><th>金額</th></tr></thead>
           <tbody>
-            {lines.map((l) => <tr key={l.id}><td>{l.description}</td><td>{l.quantity}</td><td>{yen(l.unit_price)}</td><td>{yen(l.amount)}</td></tr>)}
+            {lines.map((l) => <tr key={l.id}><td>{l.is_reduced && "※ "}{l.description}</td><td>{l.quantity}</td><td>{yen(l.unit_price)}</td><td>{yen(l.amount)}</td></tr>)}
           </tbody>
         </table>
-        <p>小計 {yen(inv.subtotal)}　消費税（{Number(inv.tax_rate) * 100}%） {yen(inv.tax)}　<strong>合計 {yen(inv.total)}</strong></p>
+        <p>小計（税抜） {yen(inv.subtotal)}</p>
+        {sums.map((s) => <p key={s.tax_rate}>{Math.round(Number(s.tax_rate) * 10000) / 100}%対象{s.is_reduced && "（※軽減税率）"} {yen(s.taxable_amount)}　消費税 {yen(s.tax_amount)}</p>)}
+        <p><strong>合計 {yen(inv.total)}</strong></p>
         {inv.status === "issued" && <p>入金消込済 {yen(inv.allocated)}　残高 <strong>{yen(inv.balance)}</strong></p>}
       </div>
       {error && <p className="error">{error}</p>}
