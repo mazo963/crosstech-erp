@@ -25,3 +25,9 @@ table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14p
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e5e7eb; }
 tr.inactive { color: #9ca3af; }
 select, textarea { padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 16px; font-family: inherit; }
+.stack { display: grid; gap: 12px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.grid .wide { grid-column: 1 / -1; }
+.item { border-top: 1px solid #e5e7eb; padding: 10px 0; display: grid; gap: 8px; }
+.notice { background: #fffbeb; border: 1px solid #fcd34d; }
+.row h2 { margin: 0; margin-right: auto; }
