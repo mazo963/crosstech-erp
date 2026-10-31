@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { type Cell, toCsv } from "../lib/csv";
 import { type ZipEntry, makeZip } from "../lib/zip";
 import { ISSUED_COLS, RECEIVED_COLS, SENT_COLS, type Col, rowsOf, safeName, uniquePaths } from "../lib/exportColumns";
+import type { IssuedDoc } from "../lib/documents";
 
 type Row = Record<string, unknown>;
 const MAX_BYTES = 300 * 1024 * 1024;
@@ -52,7 +53,7 @@ export function Export({ who }: { who: string }) {
   });
 
   const zipAll = run(async () => {
-    const [rec, iss, sent] = await Promise.all([fetchAll("v_export_received"), fetchAll("v_export_issued"), fetchAll("v_export_sent_files")]);
+    const [rec, iss, sent, issContent] = await Promise.all([fetchAll("v_export_received"), fetchAll("v_export_issued"), fetchAll("v_export_sent_files"), fetchAll("v_export_issued_content")]);
     const total = [...rec, ...sent].reduce((n, r) => n + Number(r.size_bytes ?? 0), 0);
     if (total > MAX_BYTES) throw new Error(`ファイルの合計が大きすぎます（${Math.round(total / 1048576)}MB）。期間を分けて出力してください`);
     const enc = new TextEncoder();
@@ -72,20 +73,32 @@ export function Export({ who }: { who: string }) {
       if ((await sha256Hex(bytes)) !== r.sha256) mismatches.push(paths[i]);
       entries.push({ name: paths[i], data: bytes });
     }
+    // 発行済み帳票: 固定した内容（JSON。ハッシュの計算に使った文字列そのもの）と、そこから作ったHTML
+    const docPaths = uniquePaths(issContent.map((d) => `発行済み帳票/${d.doc_date}_${d.amount}_${safeName(String(d.counterparty_name), 40)}_${safeName(String(d.doc_no))}_v${d.version}`));
+    const docMismatch: string[] = [];
+    const { renderDocHtml } = await import("../lib/docHtml"); // 出力するときだけ読み込む
+    for (let i = 0; i < issContent.length; i++) {
+      const d = issContent[i];
+      const text = String(d.content_text);
+      if ((await sha256Hex(new Uint8Array(new TextEncoder().encode(text)))) !== d.content_sha256) docMismatch.push(docPaths[i]);
+      const doc = { ...d, content: JSON.parse(text), source_id: "" } as unknown as IssuedDoc;
+      entries.push({ name: `${docPaths[i]}.json`, data: enc.encode(text) }, { name: `${docPaths[i]}.html`, data: enc.encode(renderDocHtml(doc)) });
+    }
     const readme = [
       "ダウンロードの求めへの出力（CROSSTECH 統合販売管理システム）",
       `出力日時: ${new Date().toLocaleString("ja-JP")}　出力者: ${who}`,
       `条件: 取引年月日 ${f.from || "指定なし"} 〜 ${f.to || "指定なし"}　取消済みを${f.voided ? "含む" : "含まない"}`,
-      `件数: 受領書類 ${rec.length}件、発行済み帳票 ${iss.length}件、送付PDF ${sent.length}件`,
+      `件数: 受領書類 ${rec.length}件、発行済み帳票 ${iss.length}件（版ごと）、送付PDF ${sent.length}件`,
       "",
       "【内容】",
       "受領書類一覧.csv / 発行済み帳票一覧.csv / 送付PDF一覧.csv … 検索項目（取引年月日・取引金額・取引先）、ハッシュ、タイムスタンプの状況などの一覧（UTF-8、Excelで開けます）",
       "受領書類/ … 受領した書類のファイル本体。ファイル名は「取引年月日_取引金額_取引先_元のファイル名」",
       "送付PDF/ … 取引先へ送付したPDF。ファイル名は「取引年月日_取引金額_取引先_帳票番号_元のファイル名」",
-      "※発行済み帳票の内容（見積書・納品書・請求書）は、一覧のSHA-256で固定されています。画面の「帳票」タブから表示・印刷できます。",
+      "発行済み帳票/ … 発行した見積書・納品書・請求書。.html はブラウザで開けます（印刷・PDF保存も可）。.json は発行時に固定した内容そのもので、そのSHA-256が「発行済み帳票一覧.csv」の「内容のSHA-256」です。ファイル名は「取引年月日_取引金額_取引先_帳票番号_v版」",
       "",
       "【整合性の確認】",
-      mismatches.length === 0 ? "すべてのファイルのSHA-256が、登録時に記録した値と一致しました。" : `次のファイルは、登録時のSHA-256と一致しませんでした:\n${mismatches.join("\n")}`,
+      mismatches.length === 0 ? "受領書類・送付PDFのすべてのファイルのSHA-256が、登録時に記録した値と一致しました。" : `次のファイルは、登録時のSHA-256と一致しませんでした:\n${mismatches.join("\n")}`,
+      docMismatch.length === 0 ? "発行済み帳票の固定内容（.json）のSHA-256が、発行時に記録した値と一致しました。" : `次の帳票の固定内容は、発行時のSHA-256と一致しませんでした:\n${docMismatch.join("\n")}`,
       "タイムスタンプの署名の検証は、scripts/verify_timestamp.sh（OpenSSL）で行えます。",
     ].join("\r\n");
     entries.unshift(
@@ -95,7 +108,7 @@ export function Export({ who }: { who: string }) {
       { name: "README.txt", data: enc.encode(readme) },
     );
     save(makeZip(entries), `ダウンロード一式_${stamp()}.zip`, "application/zip");
-    setMsg(`出力しました（受領書類 ${rec.length}件、帳票 ${iss.length}件、送付PDF ${sent.length}件）${mismatches.length ? `。SHA-256が一致しないファイルが${mismatches.length}件あります` : ""}`);
+    setMsg(`出力しました（受領書類 ${rec.length}件、帳票 ${iss.length}件、送付PDF ${sent.length}件）${mismatches.length + docMismatch.length ? `。SHA-256が一致しないものが${mismatches.length + docMismatch.length}件あります` : ""}`);
   });
 
   return (
@@ -114,7 +127,7 @@ export function Export({ who }: { who: string }) {
         <button disabled={busy} onClick={zipAll}>一式（CSV＋ファイル本体）をZIPで出力</button>
       </div>
       {msg && <p>{msg}</p>}
-      <p className="inactive">ZIPには、3つのCSV、受領書類と送付PDFのファイル本体、README（条件・件数・SHA-256の照合結果）が入ります。ファイルの合計が300MBを超える場合は、期間を分けてください。</p>
+      <p className="inactive">ZIPには、3つのCSV、受領書類・送付PDFのファイル本体、発行済み帳票（固定内容のJSONと、ブラウザで開けるHTML）、README（条件・件数・SHA-256の照合結果）が入ります。ファイルの合計が300MBを超える場合は、期間を分けてください。</p>
     </div>
   );
 }

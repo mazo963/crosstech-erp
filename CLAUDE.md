@@ -70,7 +70,7 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
 - [x] 09 国税庁の一次資料に基づく修正（`20261101000009`）：暦の2か月、重要書類のカラー必須、入力期間を過ぎた重要書類は紙の原本保存（`paper_original_required`）、帳簿への紐づけは登録後に追記（`received_document_links`）、税区分に新聞の定期購読を追加
 - [x] Edge Function `timestamp`（RFC 3161の要求・応答の解析はOpenSSLの本物の応答でテスト済み）。**認定事業者のTSAは未契約**（secret `TSA_URL` / `TSA_NAME` / `TSA_AUTH` 未設定のため付与は保留）。`scripts/verify_timestamp.sh` で再検証。**法令上は「総務大臣が認定する時刻認証業務」のものが必要**
 - [x] テスト: `scripts/test_scenario.sql`・`test_tax_rates.sql`・`test_received.sql`（2026-10-31 全項目合格。一次資料に合わせた修正を含む）、`supabase/functions/*/` の単体テスト
-- [x] 10 ダウンロードの求めへの出力（`20261101000010`、画面「出力」）：出力用ビュー、一覧CSV（受領書類・発行済み帳票・送付PDF）、ファイル本体のZIP（SHA-256の照合つき）。国税庁 電子取引 問59
+- [x] 10・11 ダウンロードの求めへの出力（`20261101000010`・`11`、画面「出力」）：出力用ビュー、一覧CSV（受領書類・発行済み帳票・送付PDF）、ZIP（ファイル本体、発行済み帳票の固定内容JSON・単体HTML、SHA-256の照合つき）。国税庁 電子取引 問59。ブラウザでの出力は、ダミーのAPIでPlaywrightにより確認済み
 - [x] システム概要書（`docs/システム概要書.md`）と、備付け書類の対応表（`docs/システム関係書類一覧.md`）。**操作マニュアルと事務手続の書類は未作成**、仕様書は v2.1 に更新済み（実装状況の列つき）
 - [x] 業務シナリオテスト（`scripts/test_scenario.sql`）全項目合格（2026-10-31。入金取消・帳票発行の項目を追加。以降の機能は上のテストファイルに分けた）
 
