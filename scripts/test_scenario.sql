@@ -122,9 +122,98 @@ select * from v_dashboard;
 select calc_period_end('2026-10-22', 20) as p20, calc_period_end('2026-10-22', 31) as p31,
        calc_due_date('2026-10-20', 1, 10) as due_next10, calc_due_date('2026-10-31', 2, 31) as due_2m_end;
 
+-- 帳票の発行: 内容の固定・版管理・改ざん防止・取消の連動・PDF保存・検索
+select issue_document('invoice', (select id from invoices limit 1)) as doc1 \gset
+select issue_document('invoice', (select id from invoices limit 1)) as doc1b \gset
+select set_config('t.doc1', :'doc1', false), set_config('t.doc1b', :'doc1b', false);
+select issue_document('quote', (select id from projects where title='プレート加工')) as q1 \gset
+select issue_document('delivery_note', (select id from deliveries order by delivered_on limit 1)) as dn1 \gset
+do $$ declare r record; begin
+  select * into r from issued_documents where id = current_setting('t.doc1')::uuid;
+  if current_setting('t.doc1') <> current_setting('t.doc1b') then raise exception 'NG: 同じ内容で新しい版が作られた'; end if;
+  if r.version <> 1 or r.amount <> 14665 or r.counterparty_name <> 'テスト精機' then raise exception 'NG: 検索項目が正しくない %', r; end if;
+  if r.content_sha256 <> encode(sha256(convert_to(r.content::text,'UTF8')),'hex') then raise exception 'NG: ハッシュ不一致'; end if;
+  if r.content->'tax_breakdown'->0->>'tax' <> '1333' or (r.content->>'official')::boolean then raise exception 'NG: 請求書の記載内容 %', r.content; end if;
+  raise notice 'OK 請求書を固定発行（同内容は同じ版、ハッシュ一致、控え扱い、検索項目あり）';
+end $$;
+do $$ begin
+  update issued_documents set amount = 1 where doc_type='invoice';
+  raise exception 'NG: 発行済み帳票の更新が通った';
+exception when others then
+  if sqlerrm like 'NG:%' then raise; end if;
+  raise notice 'OK 発行済み帳票の更新を拒否: %', sqlerrm;
+end $$;
+do $$ begin
+  delete from issued_documents;
+  raise exception 'NG: 発行済み帳票の削除が通った';
+exception when others then
+  if sqlerrm like 'NG:%' then raise; end if;
+  raise notice 'OK 発行済み帳票の削除を拒否: %', sqlerrm;
+end $$;
+reset role;
+do $$ begin
+  update issued_documents set content = '{}'::jsonb;
+  raise exception 'NG: 権限を持つ者でも内容を書き換えられた';
+exception when others then
+  if sqlerrm like 'NG:%' then raise; end if;
+  raise notice 'OK 特権ロールでも固定内容の書換えを拒否: %', sqlerrm;
+end $$;
+set role authenticated;
+-- 自社情報が変わったら、再発行で新しい版（旧版は残る）
+update company_settings set address = '変更後の住所' where id = 1;
+select issue_document('invoice', (select id from invoices limit 1)) as doc2 \gset
+select set_config('t.doc2', :'doc2', false);
+do $$ declare v int; n int; begin
+  select version into v from issued_documents where id = current_setting('t.doc2')::uuid;
+  select count(*) into n from issued_documents where doc_type='invoice';
+  if v <> 2 or n <> 2 then raise exception 'NG: 版管理 v=% n=%', v, n; end if;
+  raise notice 'OK 内容が変わると版2を発行し、版1も残る';
+end $$;
+-- 交付記録とPDF保存
+insert into document_deliveries (document_id, method, recipient) values (:'doc2', 'email_pdf', 'test@example.com') returning id as dlv \gset
+select attach_document_pdf(:'doc2', :'dlv', 'INV2610-0001.pdf', encode(convert_to('%PDF-1.4 test', 'UTF8'), 'base64')) as pdf \gset
+do $$ begin
+  perform attach_document_pdf((select id from issued_documents limit 1), null, 'x.pdf', encode(convert_to('not pdf', 'UTF8'), 'base64'));
+  raise exception 'NG: PDF以外が通った';
+exception when others then
+  if sqlerrm like 'NG:%' then raise; end if;
+  raise notice 'OK PDF以外を拒否: %', sqlerrm;
+end $$;
+select set_config('t.pdf', :'pdf', false);
+do $$ declare f record; begin
+  select * into f from document_files where id = current_setting('t.pdf')::uuid;
+  if f.sha256 <> encode(sha256(convert_to('%PDF-1.4 test','UTF8')),'hex') or f.size_bytes <> 13 then raise exception 'NG: PDFのハッシュ/サイズ'; end if;
+  if convert_from(decode(document_file_base64(current_setting('t.pdf')::uuid),'base64'),'UTF8') <> '%PDF-1.4 test' then raise exception 'NG: PDFの取り出し'; end if;
+  raise notice 'OK 送付PDFをハッシュ付きで保存し、そのまま取り出せる';
+end $$;
+do $$ begin
+  update document_deliveries set recipient = 'x';
+  raise exception 'NG: 交付記録の更新が通った';
+exception when others then
+  if sqlerrm like 'NG:%' then raise; end if;
+  raise notice 'OK 交付記録は追記のみ: %', sqlerrm;
+end $$;
+-- 検索（取引年月日の範囲・金額の範囲・取引先の組合せ）
+do $$ declare n int; begin
+  select count(*) into n from issued_documents
+   where doc_date between '2026-10-01' and '2026-10-31' and amount between 10000 and 20000 and counterparty_name like 'テスト%';
+  if n <> 2 then raise exception 'NG: 検索結果 %', n; end if;
+  raise notice 'OK 日付・金額・取引先の組合せ検索';
+end $$;
+-- 元の請求書を取消すと、固定済みの帳票も取消になる（行は残る）
+select void_payment((select id from payments where not voided limit 1), '帳票取消テスト');
+select void_invoice((select id from invoices limit 1), '帳票取消テスト');
+do $$ declare n int; m int; begin
+  select count(*) into n from issued_documents where doc_type='invoice' and voided;
+  select count(*) into m from issued_documents where doc_type='invoice';
+  if n <> 2 or m <> 2 then raise exception 'NG: 請求書取消に帳票が連動しない n=% m=%', n, m; end if;
+  raise notice 'OK 請求書の取消で帳票も取消（履歴は残る）';
+end $$;
+
 -- RLS: スタッフ未登録のユーザーには何も見えない・書けない
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002', false);
 select count(*) as stranger_sees_projects from projects;
+select count(*) as stranger_sees_documents from issued_documents;
 do $$ begin
   insert into customers (name) values ('不正');
   raise exception 'NG';

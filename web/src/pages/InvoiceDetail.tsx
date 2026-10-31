@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { yen } from "../lib/format";
+import { IssueButton } from "./IssueButton";
 
 type Inv = {
   id: string; invoice_no: string; customer_name: string; period_from: string | null; period_to: string; issue_date: string;
@@ -61,6 +62,7 @@ export function InvoiceDetail({ id, canWrite, onBack }: { id: string; canWrite: 
         {inv.status === "issued" && <p>入金消込済 {yen(inv.allocated)}　残高 <strong>{yen(inv.balance)}</strong></p>}
       </div>
       {error && <p className="error">{error}</p>}
+      {canWrite && inv.status === "issued" && <div className="card row"><IssueButton type="invoice" sourceId={id} label="請求書（控え）を発行・表示" /></div>}
       {canWrite && inv.status !== "void" && (
         <div className="card row">
           {inv.status === "draft" && (

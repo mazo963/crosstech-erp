@@ -26,6 +26,7 @@
 5. 共通キーは社内製番 `product_no`（例: `CRO261001-3`）。名前や意味を変える前に、ハブ（claude.ai Project「社内運用管理システム」）の意思決定ログで決める。
 6. 1ファイルは小さく保つ（目安300行以内）。Sonnet / Haiku でも正確に改修できるようにするため。
 7. スキーマ変更は**新しいマイグレーションファイルを追加**する（既存ファイルは書き換えない。本番適用後は特に）。
+8. **帳票は必ず `issue_document` で発行し、固定した内容から印刷する。** 発行済み帳票（`issued_documents`）・交付記録・送付PDFは更新・削除しない（訂正は取消＋新しい版）。電子帳簿保存法の方針と要確認事項は `docs/電帳法対応方針.md`。
 
 ## 4. ディレクトリ
 
@@ -59,12 +60,13 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
   - 03 ビュー：品目進捗、未請求の納品行、案件サマリ（粗利・進捗）、請求残高、得意先残高、ダッシュボード
   - 04 RLS：admin / office / viewer。スタッフ未登録のユーザーと anon は業務データに触れない
 - [x] 05 入金の銀行情報・取消（`20261031000005`）：`payments` に入金銀行・口座番号・取消の列、`record_payment` を銀行振込で銀行・口座必須に作り直し、`void_payment` を追加。残高ビューは取消済み入金を除外。ローカルのシナリオテスト全項目合格（2026-10-31）
-- [x] 業務シナリオテスト（`scripts/test_scenario.sql`）全項目合格（2026-10-30。入金取消の項目を追加）
+- [x] 06 帳票の発行・固定（`20261031000006`）：`issued_documents`（内容・SHA-256・版・検索項目）、`document_deliveries`（交付記録）、`document_files`（送付PDF）、`issue_document` / `attach_document_pdf`。更新・削除は特権ロールでも不可、元の請求書・納品の取消で帳票も取消。`company_settings.erp_invoice_official`（MFが正式の間は false）
+- [x] 業務シナリオテスト（`scripts/test_scenario.sql`）全項目合格（2026-10-31。入金取消・帳票発行の項目を追加）
 
 ### 残作業（この順で進める）
 1. [x] **Edge Function `ai-extract`**（実装・単体テスト合格 2026-10-30。Deno/Supabase 上での実機確認は未）：メール本文 / 注文書PDF → 案件下書きJSON。Anthropic Messages API を tool use で構造化出力。モデルは環境変数 `AI_MODEL_DEFAULT`（Haiku）/ `AI_MODEL_ADVANCED`（Sonnet）で切替（モデルIDはコードに直書きしない）。`ai_extractions` にトークン数を記録し、`AI_MONTHLY_TOKEN_LIMIT` 超過で停止。ユーザーのJWTでDBに接続し、RLSを効かせる
 2. [x] **Edge Function `juchu-sync`**（実装・単体テスト合格 2026-10-30。実GASのJSON形式・Supabase上での確認は未）：受注GASの doGet（受注JSON配列）を取得 → `items[].productNo` で照合 → `project_items.juchu_completed_at / juchu_shipped_date / juchu_synced_at` を更新。GAS URL は Supabase の secret `JUCHU_GAS_URL`。受注側へは書き込まない
-3. [ ] **画面 `web/`**（ログイン・スタッフ確認・ダッシュボード・得意先/外注先マスタ・案件（品目行・AI取込）・分納記録・締め請求（作成/発行/取消）・入金登録（銀行・口座番号、取消）まで実装、ビルド成功 2026-10-30。以下の残りは未実装）：ログイン（Supabase Auth。固定の admin/crosstech は使わない）、ダッシュボード、得意先・外注先マスタ、案件（品目行・AI取込ボタン）、分納記録、締め請求の作成・発行、入金登録、帳票印刷（見積書・納品書・請求書）、メール作成（mailto でTO/CC/件名/本文を自動入力）、設定（自社情報・スタッフ）
+3. [ ] **画面 `web/`**（ログイン・スタッフ確認・ダッシュボード・得意先/外注先マスタ・案件（品目行・AI取込）・分納記録・締め請求（作成/発行/取消）・入金登録（銀行・口座番号、取消）・帳票（発行・固定・印刷・検索・交付記録・送付PDF保存）まで実装、ビルド成功 2026-10-30。以下の残りは未実装）：ログイン（Supabase Auth。固定の admin/crosstech は使わない）、ダッシュボード、得意先・外注先マスタ、案件（品目行・AI取込ボタン）、分納記録、締め請求の作成・発行、入金登録、メール作成（mailto でTO/CC/件名/本文を自動入力）、設定（自社情報・スタッフ）
 4. [ ] **GitHub Actions**：
    - CI：PostgreSQL サービスで §5 のテストを実行、`web/` のビルド
    - デプロイ：`web/` の静的ビルド
@@ -80,6 +82,7 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
 - 外注仕入の支払管理をどこまでやるか（支払予定表・振込データ作成まで必要か）
 - 受注システムの「加工完了 → 納品処理ToDo」を、ERPの分納記録とどうつなぐか（二重入力にしない）
 - 在宅ワーク管理ダッシュボードが、将来ERPのデータを読むか
+- **電子帳簿保存法**（`docs/電帳法対応方針.md` §6・§8）：本番運用の前にバックアップ方式を決める（必須）。税理士に確認する事項、送付PDFの自動保存、受領した電子取引の保存、CSV出力が未了。法令の細部は国税庁の一次資料で未確認
 
 ## 8. 関連
 

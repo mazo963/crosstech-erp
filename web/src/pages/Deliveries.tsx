@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { yen } from "../lib/format";
+import { IssueButton } from "./IssueButton";
 
 type Prog = { id: string; product_no: string; name: string; quantity: number; unit: string; delivered_qty: number; remaining_qty: number };
 type Delivery = {
@@ -96,7 +97,7 @@ export function Deliveries({ projectId, status, canWrite, onChanged }: {
               <td>{d.delivery_lines.map((l) => `${l.project_items.product_no} ${l.project_items.name} ×${l.quantity}`).join(" / ")}
                 {d.voided && d.void_reason ? ` 理由: ${d.void_reason}` : ""}</td>
               <td>{yen(d.delivery_lines.reduce((s, l) => s + Number(l.amount), 0))}</td>
-              <td>{canWrite && !d.voided && <button type="button" className="secondary" onClick={() => voidDelivery(d)}>取消</button>}</td>
+              <td>{canWrite && !d.voided && <><IssueButton type="delivery_note" sourceId={d.id} label="納品書" /><button type="button" className="secondary" onClick={() => voidDelivery(d)}>取消</button></>}</td>
             </tr>
           ))}
           {history.length === 0 && <tr><td colSpan={5}>納品の記録はありません</td></tr>}

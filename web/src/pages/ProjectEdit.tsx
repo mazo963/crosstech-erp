@@ -6,6 +6,7 @@ import {
 } from "../lib/projects";
 import { AiImport } from "./AiImport";
 import { Deliveries } from "./Deliveries";
+import { IssueButton } from "./IssueButton";
 import { ItemsEditor } from "./ItemsEditor";
 
 type Opt = { id: string; name: string };
@@ -121,6 +122,7 @@ export function ProjectEdit({ id, myId, canWrite, onBack }: {
       <div className="row">
         <button type="button" className="secondary" onClick={onBack}>← 一覧へ</button>
         <h2>{summary?.project_no ?? "新規案件"}</h2>
+        {projectId && canWrite && <IssueButton type="quote" sourceId={projectId} />}
         {canWrite && <button type="button" onClick={() => setAiOpen(true)}>AIで取込</button>}
       </div>
       {aiOpen && <AiImport onResult={applyAi} onClose={() => setAiOpen(false)} />}
