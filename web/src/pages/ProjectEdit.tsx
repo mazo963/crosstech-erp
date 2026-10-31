@@ -5,6 +5,7 @@ import {
   type AiResult, type HeadForm, type ItemForm, STATUS, emptyHead, emptyItem, headPayload, itemFromRow, itemPayload,
 } from "../lib/projects";
 import { AiImport } from "./AiImport";
+import { Deliveries } from "./Deliveries";
 import { ItemsEditor } from "./ItemsEditor";
 
 type Opt = { id: string; name: string };
@@ -115,6 +116,7 @@ export function ProjectEdit({ id, myId, canWrite, onBack }: {
 
   const ro = !canWrite;
   return (
+    <>
     <form onSubmit={save} className="stack">
       <div className="row">
         <button type="button" className="secondary" onClick={onBack}>← 一覧へ</button>
@@ -170,5 +172,7 @@ export function ProjectEdit({ id, myId, canWrite, onBack }: {
       {error && <p className="error">{error}</p>}
       {canWrite && <div className="row"><button disabled={busy}>{busy ? "保存中…" : "保存"}</button></div>}
     </form>
+    {projectId && <Deliveries projectId={projectId} status={head.status} canWrite={canWrite} onChanged={() => load(projectId)} />}
+    </>
   );
 }
