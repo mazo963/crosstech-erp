@@ -1,10 +1,16 @@
+import { useState } from "react";
 import { configured, supabase } from "./lib/supabase";
 import { useSession } from "./lib/useSession";
 import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
+import { MasterPage } from "./pages/MasterPage";
+import { customers, vendors } from "./lib/masters";
+
+const tabs = ["ダッシュボード", "得意先", "外注先"] as const;
 
 export function App() {
   const { session, staff, loading } = useSession();
+  const [tab, setTab] = useState<(typeof tabs)[number]>("ダッシュボード");
 
   if (!configured) {
     return <p className="error">web/.env に VITE_SUPABASE_URL と VITE_SUPABASE_ANON_KEY を設定してください（.env.example 参照）。</p>;
@@ -26,9 +32,13 @@ export function App() {
         <span>{staff.name}（{staff.role}）</span>
         <button onClick={() => supabase.auth.signOut()}>ログアウト</button>
       </header>
+      <nav>
+        {tabs.map((t) => <button key={t} className={t === tab ? "" : "secondary"} onClick={() => setTab(t)}>{t}</button>)}
+      </nav>
       <main>
-        <h2>ダッシュボード</h2>
-        <Dashboard />
+        {tab === "ダッシュボード" && <Dashboard />}
+        {tab === "得意先" && <MasterPage def={customers} canWrite={staff.role !== "viewer"} />}
+        {tab === "外注先" && <MasterPage def={vendors} canWrite={staff.role !== "viewer"} />}
       </main>
     </>
   );
