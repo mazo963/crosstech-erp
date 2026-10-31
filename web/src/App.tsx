@@ -5,10 +5,11 @@ import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { Projects } from "./pages/Projects";
 import { Invoices } from "./pages/Invoices";
+import { Payments } from "./pages/Payments";
 import { MasterPage } from "./pages/MasterPage";
 import { customers, vendors } from "./lib/masters";
 
-const tabs = ["ダッシュボード", "案件", "請求", "得意先", "外注先"] as const;
+const tabs = ["ダッシュボード", "案件", "請求", "入金", "得意先", "外注先"] as const;
 
 export function App() {
   const { session, staff, loading } = useSession();
@@ -41,6 +42,7 @@ export function App() {
         {tab === "ダッシュボード" && <Dashboard />}
         {tab === "案件" && <Projects myId={staff.id} canWrite={staff.role !== "viewer"} />}
         {tab === "請求" && <Invoices canWrite={staff.role !== "viewer"} />}
+        {tab === "入金" && <Payments canWrite={staff.role !== "viewer"} />}
         {tab === "得意先" && <MasterPage def={customers} canWrite={staff.role !== "viewer"} />}
         {tab === "外注先" && <MasterPage def={vendors} canWrite={staff.role !== "viewer"} />}
       </main>
