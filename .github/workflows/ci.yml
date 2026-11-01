@@ -1,0 +1,51 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  db:
+    name: DB（マイグレーションと業務シナリオテスト）
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/ci_db_tests.sh
+
+  node:
+    name: 単体テストと画面のビルド
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      # PDFの本文確認（pdftotext）と、タイムスタンプ応答の検証（openssl）を有効にする
+      - run: sudo apt-get update && sudo apt-get install -y poppler-utils openssl
+      - run: npm ci
+        working-directory: web
+      - name: 単体テスト（Edge Function・PDF・CSV/ZIP・メールなど）
+        run: node --experimental-strip-types --test supabase/functions/*/*.test.ts web/src/lib/*.test.ts
+      - name: 型チェックとビルド
+        run: npm run build
+        working-directory: web
+        env:
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_ANON_KEY: ci-dummy-anon-key

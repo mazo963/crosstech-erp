@@ -31,6 +31,12 @@ DBスキーマと業務ロジックが完成し、ローカルで検証済み。
 
 CLAUDE.md §5 を参照。
 
+## 自動実行（GitHub Actions）
+
+- `ci.yml`: push・PR のたびに、DBの業務シナリオテストと、単体テスト・型チェック・画面のビルド
+- `keepalive.yml`: 毎日 `ping` を呼び、Supabase の休止を防ぐ（Variables `SUPABASE_URL`、Secrets `SUPABASE_ANON_KEY` が必要）
+- `deploy.yml`: 画面を GitHub Pages に配信（手動実行のみ。Variables `VITE_SUPABASE_URL`、Secrets `VITE_SUPABASE_ANON_KEY` が必要）
+
 ## 秘密情報
 
 service_role キー、Anthropic APIキー、受注GASのURLは**コミットしない**。Supabase の secrets と GitHub Actions の secrets に保存する。

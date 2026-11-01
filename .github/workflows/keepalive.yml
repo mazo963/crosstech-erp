@@ -1,0 +1,31 @@
+name: 休止防止
+# Supabase の無料プランは、一定期間使われないと休止する。毎日、疎通用の ping を呼ぶ。
+# 必要な設定（リポジトリの Settings → Secrets and variables → Actions）:
+#   Variables: SUPABASE_URL（https://xxxx.supabase.co）
+#   Secrets  : SUPABASE_ANON_KEY（公開してよい anon キー。service_role キーは入れない）
+on:
+  schedule:
+    - cron: "17 21 * * *"   # 毎日 06:17（日本時間）
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: rpc/ping を呼ぶ
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::warning::SUPABASE_URL（Variables）と SUPABASE_ANON_KEY（Secrets）が未設定のため、何もしません"
+            exit 0
+          fi
+          code=$(curl -sS -o /tmp/ping.json -w '%{http_code}' --retry 3 --retry-delay 5 --max-time 30 \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/ping" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" -d '{}')
+          echo "HTTP $code"
+          if [ "$code" != "200" ]; then echo "::error::ping に失敗しました（HTTP $code）"; exit 1; fi
