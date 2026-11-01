@@ -5,6 +5,7 @@ import { saveBlob } from "../lib/download";
 import { type ZipEntry, makeZip } from "../lib/zip";
 import { ISSUED_COLS, RECEIVED_COLS, SENT_COLS, type Col, rowsOf, safeName, uniquePaths } from "../lib/exportColumns";
 import type { IssuedDoc } from "../lib/documents";
+import { AccountingExport } from "./AccountingExport";
 
 type Row = Record<string, unknown>;
 const MAX_BYTES = 300 * 1024 * 1024;
@@ -107,6 +108,8 @@ export function Export({ who }: { who: string }) {
   });
 
   return (
+    <div className="stack">
+    <AccountingExport />
     <div className="card stack">
       <h3>税務調査の「ダウンロードの求め」への出力</h3>
       <p className="inactive">一覧（検索項目つき）はCSV、ファイル本体はZIPで出力します。出力する期間（取引年月日）を指定してください。</p>
@@ -123,6 +126,7 @@ export function Export({ who }: { who: string }) {
       </div>
       {msg && <p>{msg}</p>}
       <p className="inactive">ZIPには、3つのCSV、受領書類・送付PDFのファイル本体、発行済み帳票（固定内容のJSONと、ブラウザで開けるHTML）、README（条件・件数・SHA-256の照合結果）が入ります。ファイルの合計が300MBを超える場合は、期間を分けてください。</p>
+    </div>
     </div>
   );
 }

@@ -16,7 +16,7 @@ echo "マイグレーション $(ls supabase/migrations/*.sql | wc -l) 本を適
 
 # 順序に意味がある（scenario がテスト用ユーザーを作り、以降のテストが共有する）
 total=0; fail=0
-for t in test_scenario test_tax_rates test_received test_addressee test_doc_options test_convert; do
+for t in test_scenario test_tax_rates test_received test_addressee test_doc_options test_accounting test_convert; do
   out=$(run "scripts/$t.sql" 2>&1); code=$?
   ok=$(printf '%s\n' "$out" | grep -c 'NOTICE:  OK')
   total=$((total + ok))

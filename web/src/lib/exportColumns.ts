@@ -70,3 +70,23 @@ export function uniquePaths(paths: string[]): string[] {
     return dot > p.lastIndexOf("/") ? `${p.slice(0, dot)}_${n}${p.slice(dot)}` : `${p}_${n}`;
   });
 }
+
+// ---- 税理士へ渡す会計データ（v_acct_sales / v_acct_payments）。特定の会計ソフトの形式ではない ----
+const STATUS = via({ issued: "発行済み", void: "取消済み" });
+const PAY_METHOD = via({ bank: "銀行振込", cash: "現金", offset: "相殺", other: "その他" });
+
+export const ACCT_SALES_COLS: Col[] = [
+  ["請求日", "issue_date"], ["請求書番号", "invoice_no"], ["得意先コード", "customer_code"], ["得意先", "customer_name"],
+  ["得意先の登録番号", "customer_invoice_reg_no"], ["税率", "tax_rate", (v) => (v == null ? "" : `${Math.round(Number(v) * 10000) / 100}%`)],
+  ["軽減税率", "is_reduced"], ["課税対象額（税抜・円）", "taxable_amount"], ["消費税額（円）", "tax_amount"], ["税込合計（円）", "gross_amount"],
+  ["請求書の税抜小計（円）", "invoice_subtotal"], ["請求書の消費税合計（円）", "invoice_tax"], ["請求書の合計（円）", "invoice_total"],
+  ["対象期間（から）", "period_from"], ["対象期間（まで）", "period_to"], ["支払期日", "due_date"],
+  ["状態", "status", STATUS], ["送付PDFのファイル名（Box）", "sent_pdf_file_name"],
+];
+
+export const ACCT_PAYMENTS_COLS: Col[] = [
+  ["入金日", "received_on"], ["得意先コード", "customer_code"], ["得意先", "customer_name"],
+  ["入金額（円）", "amount"], ["振込手数料（先方差引・円）", "fee"], ["消込額（円）", "cleared_amount"],
+  ["方法", "method", PAY_METHOD], ["入金銀行", "bank_name"], ["口座番号", "account_no"], ["消込先の請求書", "allocated_invoices"],
+  ["メモ", "memo"], ["取消", "voided"], ["取消の理由", "void_reason"],
+];
