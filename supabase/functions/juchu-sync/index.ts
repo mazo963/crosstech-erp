@@ -43,27 +43,30 @@ Deno.serve(async (req) => {
 
   const plan = planUpdates(records, items ?? []);
   const now = new Date().toISOString();
-  let failed = 0;
+  let failed = 0, affected = 0;
   for (const u of plan.updates) {
-    const { error } = await db.from("project_items")
+    // RLS で更新できない場合、エラーにならず 0 行になるので、更新できた行数を数える
+    const { data, error } = await db.from("project_items")
       .update({ juchu_completed_at: u.juchu_completed_at, juchu_shipped_date: u.juchu_shipped_date, juchu_synced_at: now })
-      .eq("id", u.id);
+      .eq("id", u.id).select("id");
     if (error) failed++;
+    else affected += data?.length ?? 0;
   }
   // 変化が無かった一致品目も「同期した時刻」だけ更新する
   const changed = new Set(plan.updates.map((u) => u.id));
   const rest = plan.matchedIds.filter((id) => !changed.has(id));
   if (rest.length) {
-    const { error } = await db.from("project_items").update({ juchu_synced_at: now }).in("id", rest);
+    const { data, error } = await db.from("project_items").update({ juchu_synced_at: now }).in("id", rest).select("id");
     if (error) failed += rest.length;
+    else affected += data?.length ?? 0;
   }
-  if (failed > 0 && failed === plan.matchedIds.length) {
+  if (plan.matchedIds.length > 0 && affected === 0) {
     return json(403, { error: "更新できませんでした（admin / office 権限が必要です）" });
   }
   return json(200, {
     synced_at: now,
     matched: plan.matchedIds.length,
-    updated: plan.updates.length - Math.min(failed, plan.updates.length),
+    updated: Math.max(0, plan.updates.length - failed),
     failed,
     not_in_erp: plan.notInErp,
     not_in_juchu: plan.notInJuchu,

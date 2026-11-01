@@ -41,6 +41,6 @@ test("更新計画: 変化分のみ、未一致を報告、受注側に無い品
   const p = planUpdates(records, db);
   assert.deepEqual(p.updates.map((u) => u.id), ["2"]);
   assert.deepEqual(p.matchedIds, ["1", "2"]);
-  assert.equal(p.notInErp, 1);
+  assert.equal(p.notInErp.length, 1);
   assert.deepEqual(p.notInJuchu, ["C"]);
 });

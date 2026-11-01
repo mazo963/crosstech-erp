@@ -58,7 +58,7 @@ node --experimental-strip-types --test supabase/functions/*/*.test.ts web/src/li
 
 CIでは、上の SQL テストを `scripts/ci_db_tests.sh` が同じ順序で流す（`PGHOST` などを設定して実行。失敗が1件でもあれば異常終了）。
 
-Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも同じマイグレーションが適用される。
+Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも同じマイグレーションが適用される（**実Supabaseでの確認 2026-11-01**：`supabase start` で16本が適用され、`scripts/smoke_supabase.mjs` が全項目合格。手順は README）。
 
 ## 6. 進捗
 
@@ -94,7 +94,7 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
    - CI（`ci.yml`）：PostgreSQL 16 のサービスで `scripts/ci_db_tests.sh`（マイグレーション全適用＋業務シナリオテスト6本、失敗の検出もローカルで確認）、Node 22 で単体テスト・型チェック・`web/` のビルド
    - 休止防止（`keepalive.yml`）：毎日 `rpc/ping`。**設定が必要**：Variables `SUPABASE_URL`、Secrets `SUPABASE_ANON_KEY`（未設定の間は警告を出して何もしない）
    - デプロイ（`deploy.yml`）：GitHub Pages へ。**手動実行のみ**（ホスティング先が未決のため。§7）。設定が必要：Pages の Source を「GitHub Actions」に、Variables `VITE_SUPABASE_URL`、Secrets `VITE_SUPABASE_ANON_KEY`
-5. [ ] `README.md` のセットアップ手順を、実際に動かして確認する
+5. [x] `README.md` のセットアップ手順：**ローカルの実Supabase（Docker）で確認済み**（2026-11-01。マイグレーション適用、Auth・RLS・業務フロー、全画面の表示、Edge Function `juchu-sync`（本物のDenoで）、スモークテスト）。**Supabase のクラウドでの実施は未**（手順は README に記載）。`ai-extract`（Anthropic APIキーなし）と `timestamp`（TSA未契約）は、設定未了のエラー応答のみ確認
 6. [x] ハブへの変更点レポート：`docs/ハブへの変更レポート.md` を作成（システム台帳・データ契約・意思決定ログ・未決事項）。**ハブ（claude.ai Project）への貼り付けは、ユーザーの作業**（開発側からは更新できない）
 
 ## 7. 未決事項（ユーザーに確認が必要。勝手に決めない）

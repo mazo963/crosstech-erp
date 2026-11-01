@@ -49,3 +49,19 @@ jobs:
         env:
           VITE_SUPABASE_URL: https://example.supabase.co
           VITE_SUPABASE_ANON_KEY: ci-dummy-anon-key
+
+  supabase:
+    name: 実Supabase（ローカル起動での動作確認）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Auth・PostgREST・RLS を含む本物の Supabase を起動し、マイグレーションの適用と、API経由の業務フローを確認する
+      - name: Supabase を起動
+        run: npx --yes supabase@2.122.0 start -x studio,imgproxy,vector,logflare,mailpit,realtime,storage-api,postgres-meta
+      - name: スモークテスト（ログイン・RLS・見積から入金まで・帳票の固定）
+        run: |
+          eval "$(npx --yes supabase@2.122.0 status -o env)"
+          API_URL="$API_URL" ANON_KEY="$ANON_KEY" SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" node scripts/smoke_supabase.mjs

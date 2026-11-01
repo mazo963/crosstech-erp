@@ -82,7 +82,8 @@ export function planUpdates(records: JuchuRecord[], dbItems: DbItem[]) {
       updates.push({ id: it.id, juchu_completed_at: r.completedAt, juchu_shipped_date: r.shippedDate });
     }
   }
-  const notInErp = records.filter((r) => !dbItems.some((i) => i.product_no === r.productNo)).length;
+  const have = new Set(dbItems.map((i) => i.product_no));
+  const notInErp = records.filter((r) => !have.has(r.productNo)).map((r) => r.productNo);
   const notInJuchu = dbItems.filter((i) => !byNo.has(i.product_no)).map((i) => i.product_no);
   return { updates, matchedIds: dbItems.filter((i) => matched.has(i.product_no)).map((i) => i.id), notInErp, notInJuchu };
 }
