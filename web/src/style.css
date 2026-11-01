@@ -119,6 +119,6 @@ ol.stepsl li > strong { margin-right: 10px; }
 .paper .doc-logo { position: absolute; left: 18mm; top: 16mm; max-height: 34px; max-width: 150px; }
 .paper .doc-seal { display: block; margin: 2px 0 0 auto; width: 46px; height: 46px; object-fit: contain; }
 .opt-grid { display: grid; grid-template-columns: max-content 1fr; gap: 8px 14px; align-items: center; }
-.img-field { display: flex; align-items: center; gap: 12px; }
+.img-field { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .img-field img { max-height: 48px; max-width: 160px; border: 1px solid #e5e7eb; background: #fff; }
 .juchu-done { color: #047857; font-weight: 600; } .juchu-shipped { color: #1d4ed8; font-weight: 600; } .juchu-wip { color: #b45309; } .juchu-none { color: #6b7280; }

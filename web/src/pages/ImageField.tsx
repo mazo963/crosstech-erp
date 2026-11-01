@@ -16,7 +16,7 @@ export function ImageField({ label, value, onChange, disabled }: { label: string
     r.readAsDataURL(file);
   }
   return (
-    <div className="stack">
+    <div className="stack wide">
       <span>{label}</span>
       <div className="img-field">
         {value ? <img src={value} alt={label} /> : <span className="inactive">未登録</span>}
