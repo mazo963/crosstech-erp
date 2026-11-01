@@ -121,3 +121,4 @@ ol.stepsl li > strong { margin-right: 10px; }
 .opt-grid { display: grid; grid-template-columns: max-content 1fr; gap: 8px 14px; align-items: center; }
 .img-field { display: flex; align-items: center; gap: 12px; }
 .img-field img { max-height: 48px; max-width: 160px; border: 1px solid #e5e7eb; background: #fff; }
+.juchu-done { color: #047857; font-weight: 600; } .juchu-shipped { color: #1d4ed8; font-weight: 600; } .juchu-wip { color: #b45309; } .juchu-none { color: #6b7280; }

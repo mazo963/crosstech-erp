@@ -9,6 +9,7 @@ import { Deliveries } from "./Deliveries";
 import { ConvertPanel } from "./ConvertPanel";
 import { ProjectPreview } from "./ProjectPreview";
 import { ItemsEditor } from "./ItemsEditor";
+import { JuchuStatus } from "./JuchuStatus";
 
 type Opt = { id: string; name: string };
 type Summary = { sales_amount: number; cost_amount: number; gross_profit: number; margin_pct: number | null; project_no: string };
@@ -180,6 +181,7 @@ export function ProjectEdit({ id, myId, canWrite, onBack }: {
       {error && <p className="error">{error}</p>}
       {canWrite && <div className="row"><button disabled={busy}>{busy ? "保存中…" : "保存"}</button></div>}
     </form>
+    {projectId && <JuchuStatus projectId={projectId} rev={rev} />}
     {projectId && <Deliveries projectId={projectId} status={head.status} canWrite={canWrite} onChanged={() => load(projectId)} />}
     </div>
     <aside className="split-side">

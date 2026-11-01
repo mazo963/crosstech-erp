@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { pct, yen } from "../lib/format";
 import { clearRoute } from "../lib/nav";
+import { JuchuSync } from "./JuchuSync";
 import { ProjectEdit } from "./ProjectEdit";
 
 type Row = {
@@ -34,6 +35,8 @@ export function Projects({ myId, canWrite, routeId }: { myId: string; canWrite: 
   }
   const shown = rows.filter((r) => !filter || r.progress === filter);
   return (
+    <div className="stack">
+    <JuchuSync canWrite={canWrite} />
     <div className="card">
       <div className="row">
         <h3>案件</h3>
@@ -58,6 +61,7 @@ export function Projects({ myId, canWrite, routeId }: { myId: string; canWrite: 
           {shown.length === 0 && <tr><td colSpan={8}>案件がありません</td></tr>}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }
