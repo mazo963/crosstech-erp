@@ -90,7 +90,7 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
 1. [x] **Edge Function `ai-extract`**（実装・単体テスト合格 2026-10-30。Deno/Supabase 上での実機確認は未）：メール本文 / 注文書PDF → 案件下書きJSON。Anthropic Messages API を tool use で構造化出力。モデルは環境変数 `AI_MODEL_DEFAULT`（Haiku）/ `AI_MODEL_ADVANCED`（Sonnet）で切替（モデルIDはコードに直書きしない）。`ai_extractions` にトークン数を記録し、`AI_MONTHLY_TOKEN_LIMIT` 超過で停止。ユーザーのJWTでDBに接続し、RLSを効かせる
 2. [x] **Edge Function `juchu-sync`**（実装・単体テスト合格 2026-10-30。実GASのJSON形式・Supabase上での確認は未）：受注GASの doGet（受注JSON配列）を取得 → `items[].productNo` で照合 → `project_items.juchu_completed_at / juchu_shipped_date / juchu_synced_at` を更新。GAS URL は Supabase の secret `JUCHU_GAS_URL`。受注側へは書き込まない
 3. [ ] **画面 `web/`**（ログイン・スタッフ確認・ダッシュボード・得意先/外注先マスタ・案件（品目行・AI取込）・分納記録・締め請求（作成/発行/取消）・入金登録（銀行・口座番号、取消）・帳票（発行・固定・印刷・検索・交付記録・送付PDF保存）・受領書類（電子取引・スキャナ保存・タイムスタンプ状況）・税率・設定・PDF生成とメール作成まで実装、ビルド成功 2026-10-30。以下の残りは未実装）：ログイン（Supabase Auth。固定の admin/crosstech は使わない）、ダッシュボード、得意先・外注先マスタ、案件（品目行・AI取込ボタン）、分納記録、締め請求の作成・発行、入金登録、メール作成（mailto でTO/CC/件名/本文を自動入力）、設定（自社情報・スタッフ）
-4. [x] **GitHub Actions**（作成・ローカルで検証済み 2026-11-01。**GitHub 上での実行は未確認**）：
+4. [x] **GitHub Actions**（作成 2026-11-01。**CI は GitHub 上で2ジョブとも合格を確認**。keepalive・deploy は設定が済むまで未実行）：
    - CI（`ci.yml`）：PostgreSQL 16 のサービスで `scripts/ci_db_tests.sh`（マイグレーション全適用＋業務シナリオテスト6本、失敗の検出もローカルで確認）、Node 22 で単体テスト・型チェック・`web/` のビルド
    - 休止防止（`keepalive.yml`）：毎日 `rpc/ping`。**設定が必要**：Variables `SUPABASE_URL`、Secrets `SUPABASE_ANON_KEY`（未設定の間は警告を出して何もしない）
    - デプロイ（`deploy.yml`）：GitHub Pages へ。**手動実行のみ**（ホスティング先が未決のため。§7）。設定が必要：Pages の Source を「GitHub Actions」に、Variables `VITE_SUPABASE_URL`、Secrets `VITE_SUPABASE_ANON_KEY`
