@@ -4,11 +4,11 @@
 import { PDFDocument, PDFFont, PDFPage, degrees, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import type { DocContent } from "./documents.ts";
-import { DOC_LABEL } from "./documents.ts";
+import { DOC_LABEL, bankText, parseDataUrl } from "./documents.ts";
 import { jst } from "./format.ts";
 export { jst };
 
-export const PDF_TEMPLATE_VERSION = 1;
+export const PDF_TEMPLATE_VERSION = 2;
 
 export type PdfMeta = { version: number; issued_at: string; content_sha256: string; voided: boolean; void_reason: string | null };
 export type PdfResult = { bytes: Uint8Array; missing: string[] };
@@ -111,6 +111,12 @@ async function build(c: DocContent, meta: PdfMeta, fontBytes: Uint8Array): Promi
     y += 30;
   }
   const title = `${label}${copy ? "（控え）" : ""}`;
+  const image = async (u: string | null | undefined) => {
+    const d = parseDataUrl(u);
+    return d ? (d.type === "png" ? pdf.embedPng(d.bytes) : pdf.embedJpg(d.bytes)) : null;
+  };
+  const logo = await image(c.issuer.logo), seal = await image(c.issuer.seal);
+  if (logo) { const k = Math.min(34 / logo.height, 150 / logo.width); page.drawImage(logo, { x: ML, y: H - y - logo.height * k, width: logo.width * k, height: logo.height * k }); }
   { // 見出し（字間を空ける）
     const size = 20, gap = size * 0.4;
     const chars = Array.from(safe(title));
@@ -129,6 +135,8 @@ async function build(c: DocContent, meta: PdfMeta, fontBytes: Uint8Array): Promi
   if (c.customer.department || c.customer.contact_name) left([c.customer.department, c.customer.contact_name && `${c.customer.contact_name} 様`].filter(Boolean).join("　"));
   if (c.title) left(`件名: ${c.title}`);
   if (c.customer_po_no) left(`客先注文番号: ${c.customer_po_no}`);
+  if (c.delivery_place) left(`納入場所: ${c.delivery_place}`);
+  if (c.payment_terms) left(`支払条件: ${c.payment_terms}`);
   if (c.period_to) left(`対象期間: ${c.period_from ?? "初回"} 〜 ${c.period_to}`);
   let ry = top;
   const right = (s: string, bold = false, size = 9) => { draw(s, MR, size, { align: "r", yy: ry, bold }); ry += size + 4; };
@@ -136,12 +144,14 @@ async function build(c: DocContent, meta: PdfMeta, fontBytes: Uint8Array): Promi
   right(`${isInvoice ? "請求日" : c.doc_type === "quote" ? "見積日" : "納品日"} ${c.doc_date}`);
   right(c.issuer.company_name, true, 10);
   if (c.issuer.address) right(`${c.issuer.postal_code ? `〒${c.issuer.postal_code} ` : ""}${c.issuer.address}`);
-  if (c.issuer.tel) right(`TEL ${c.issuer.tel}`);
+  if (c.issuer.tel || c.issuer.fax) right([c.issuer.tel && `TEL ${c.issuer.tel}`, c.issuer.fax && `FAX ${c.issuer.fax}`].filter(Boolean).join("　"));
+  if (c.issuer.contact_person) right(`担当 ${c.issuer.contact_person}`);
   if (c.issuer.invoice_reg_no) right(`登録番号 ${c.issuer.invoice_reg_no}`);
+  if (seal) { const sz = 46; page.drawImage(seal, { x: MR - sz, y: H - ry - sz, width: sz, height: sz }); ry += sz + 2; }
   y = Math.max(ly, ry) + 14;
 
   if (isInvoice) { draw(`ご請求金額 ${yen(c.total)}（税込）${c.due_date ? `　お支払期日 ${c.due_date}` : ""}`, ML, 12.5, { bold: true }); y += 26; }
-  else if (c.doc_type === "quote") { draw(`お見積金額 ${yen(c.total)}（税込）${c.due_date ? `　納期 ${c.due_date}` : ""}`, ML, 12.5, { bold: true }); y += 26; }
+  else if (c.doc_type === "quote") { draw(`お見積金額 ${yen(c.total)}（税込）${c.due_date ? `　納期 ${c.due_date}` : ""}${c.valid_until ? `　有効期限 ${c.valid_until}` : ""}`, ML, 12.5, { bold: true }); y += 26; }
 
   header = tableHead;
   tableHead();
@@ -167,7 +177,7 @@ async function build(c: DocContent, meta: PdfMeta, fontBytes: Uint8Array): Promi
   for (const t of c.tax_breakdown ?? []) total(`${pct(t.rate)}対象${t.reduced ? "（※軽減税率）" : ""} ${yen(t.base)}　消費税 ${yen(t.tax)}`);
   if (c.total != null) total(`合計 ${yen(c.total)}`, true);
   if (hasReduced) { y += 2; draw("※は軽減税率の対象品目です。", ML, 8, { color: GRAY }); y += 12; }
-  if (isInvoice && c.bank_info) { for (const t of wrap(`お振込先: ${c.bank_info}`, 9, MR - ML)) { ensure(14); draw(t, ML, 9); y += 13; } }
+  if (isInvoice && bankText(c)) { for (const t of wrap(`お振込先: ${bankText(c)}`, 9, MR - ML)) { ensure(14); draw(t, ML, 9); y += 13; } }
   if (c.notes) { for (const t of wrap(`備考: ${c.notes}`, 8.5, MR - ML)) { ensure(13); draw(t, ML, 8.5, { color: GRAY }); y += 12; } }
   ensure(16);
   draw(`発行 ${jst(meta.issued_at)}　版 ${meta.version}　内容ハッシュ ${meta.content_sha256.slice(0, 12)}`, ML, 8, { color: GRAY });

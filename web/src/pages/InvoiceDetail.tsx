@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { yen } from "../lib/format";
 import { IssueButton } from "./IssueButton";
 import { AddresseeEditor } from "./AddresseeEditor";
+import { DocOptionsEditor } from "./DocOptionsEditor";
 import { DocPreview } from "./DocPreview";
 
 type Inv = {
@@ -91,6 +92,7 @@ export function InvoiceDetail({ id, canWrite, onBack }: { id: string; canWrite: 
       <div className="card stack">
         <p className="inactive">請求書の発行イメージ{inv.status === "draft" ? "（下書き。発行済みにしてから、帳票として発行・固定します）" : "（現在の内容。固定した帳票は「帳票」タブ）"}</p>
         <AddresseeEditor type="invoice" sourceId={id} canWrite={canWrite} rev={addrRev} onSaved={() => setAddrRev((n) => n + 1)} />
+        <DocOptionsEditor type="invoice" sourceId={id} canWrite={canWrite} rev={addrRev} onSaved={() => setAddrRev((n) => n + 1)} />
         <DocPreview type="invoice" sourceId={id} rev={inv.total + inv.status.length + addrRev} />
       </div>
     </aside>

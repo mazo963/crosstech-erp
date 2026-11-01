@@ -51,6 +51,7 @@ psql -d erp_test -f scripts/test_scenario.sql   # NOTICE に「OK ...」が並�
 psql -d erp_test -f scripts/test_tax_rates.sql  # 複数税率
 psql -d erp_test -f scripts/test_received.sql   # 受領書類・スキャナ保存・タイムスタンプ
 psql -d erp_test -f scripts/test_addressee.sql  # 帳票の宛先（住所・担当部署・担当者、表示／非表示）
+psql -d erp_test -f scripts/test_doc_options.sql  # 帳票の記載項目（有効期限・振込先・納入場所・ロゴ・社印など）
 psql -d erp_test -f scripts/test_convert.sql    # 見積→受注→納品→請求の変換（テストのファイルは、いずれも own_timestamp=true で実行）
 node --experimental-strip-types --test supabase/functions/*/*.test.ts web/src/lib/*.test.ts   # Edge Function・CSV/ZIPの単体テスト（OpenSSLがあれば本物のタイムスタンプ応答も検証）
 ```
@@ -77,6 +78,7 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
 - [x] 13 帳票の発行イメージ（`20261101000013`）：`build_document_content`（記載内容の組み立て。発行とプレビューで共通）、`preview_document`（保存しない）。画面を、左メニュー＋内容は全幅、帳票は左右2列（右にA4の発行イメージ）に変更（ダミーAPI＋Playwrightで確認。全ページで内容の幅が一定）
 - [x] 14 送付の流れ（案A）（`20261101000014`）：PDF生成（日本語フォント埋め込み、同じ内容なら同じバイト列）、お客様宛・Box宛のメール作成（mailto）、交付の方法に「Box保存」、設定画面（自社情報・請求書の正式化・Box取込アドレス・署名・タイムスタンプ自社付与・スタッフ）、`own_timestamp`（既定オフ）。ブラウザでPDFのダウンロード・メール・交付の記録・保存PDFの同一性を確認済み
 - [x] 15 帳票の宛先（`20261101000015`）：得意先に担当部署・住所／部署／担当者の表示設定、`doc_addressees`（帳票ごと・案件ごとの上書き）、`resolve_addressee`（見積書→納品書→請求書へ引き継ぎ）、非表示項目は帳票の内容から除外。画面「宛先」で変更（この帳票だけ／案件すべて／マスタにも反映、マスタに戻す）。ダミーAPI＋Playwrightで確認済み
+- [x] 16 帳票の記載項目（`20261101000016`）：有効期限・納期（見積書）、納入場所・客先注文番号（納品書・請求書）、支払条件・振込先（請求書。`bank_accounts` の複数口座から選択）、自社ロゴ・担当者名・FAX・社印（3帳票）。`doc_options` で帳票ごとに値の変更と表示／非表示、ロゴ・社印は発行時に内容へ固定。画面「記載項目」、設定画面（ロゴ・社印・口座）。PDFひな形 v2。ダミーAPI＋Playwrightで確認済み
 - [x] システム概要書（`docs/システム概要書.md`）と、備付け書類の対応表（`docs/システム関係書類一覧.md`）。**操作マニュアルと事務手続の書類は未作成**、仕様書は v2.1 に更新済み（実装状況の列つき）
 - [x] 業務シナリオテスト（`scripts/test_scenario.sql`）全項目合格（2026-10-31。入金取消・帳票発行の項目を追加。以降の機能は上のテストファイルに分けた）
 

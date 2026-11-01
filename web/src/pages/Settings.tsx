@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { type Settings as S, useSettings } from "../lib/useSettings";
+import { BankAccounts } from "./BankAccounts";
+import { ImageField } from "./ImageField";
 
 type Staff = { id: string; name: string; role: string; worker_code: string; active: boolean };
 const ROUNDING: [string, string][] = [["floor", "切捨て"], ["round", "四捨五入"], ["ceil", "切上げ"]];
@@ -36,6 +38,7 @@ export function Settings({ isAdmin }: { isAdmin: boolean }) {
       company_name: f!.company_name.trim(), invoice_reg_no: nul(f!.invoice_reg_no), postal_code: nul(f!.postal_code), address: nul(f!.address), tel: nul(f!.tel), email: nul(f!.email),
       bank_info: nul(f!.bank_info), tax_rounding: f!.tax_rounding, erp_invoice_official: f!.erp_invoice_official, box_import_email: nul(f!.box_import_email),
       mail_signature: nul(f!.mail_signature), own_timestamp: f!.own_timestamp,
+      fax: nul(f!.fax), contact_person: nul(f!.contact_person), quote_valid_days: f!.quote_valid_days, logo_data: f!.logo_data, seal_data: f!.seal_data,
     }).eq("id", 1);
     setBusy(false);
     setMsg(error ? `保存できません: ${error.message}` : "保存しました。これから発行する帳票に反映されます（発行済みの帳票は変わりません）");
@@ -59,7 +62,14 @@ export function Settings({ isAdmin }: { isAdmin: boolean }) {
           {text("address", "住所")}
           {text("tel", "電話")}
           {text("email", "メール")}
-          {text("bank_info", "振込先（請求書に印字）", { area: true })}
+          {text("fax", "FAX")}
+          {text("contact_person", "自社の担当者名（帳票の既定）")}
+          <label>見積書の有効期限（見積日から何日）
+            <input type="number" min={1} max={365} value={f.quote_valid_days} onChange={(e) => set("quote_valid_days", Number(e.target.value))} disabled={!isAdmin} />
+          </label>
+          {text("bank_info", "振込先（自由記入。下の口座が未登録のときだけ使います）", { area: true })}
+          <ImageField label="自社ロゴ（PNG / JPEG）" value={f.logo_data} onChange={(v) => set("logo_data", v)} disabled={!isAdmin} />
+          <ImageField label="社印の画像（PNG / JPEG。背景を透明にしたPNGが見やすい）" value={f.seal_data} onChange={(v) => set("seal_data", v)} disabled={!isAdmin} />
           <label>消費税の端数処理（請求書1枚・税率ごとに1回）
             <select value={f.tax_rounding} onChange={(e) => set("tax_rounding", e.target.value)} disabled={!isAdmin}>{ROUNDING.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select>
           </label>
@@ -79,6 +89,7 @@ export function Settings({ isAdmin }: { isAdmin: boolean }) {
         {msg && <p className={msg.includes("できません") ? "error" : ""}>{msg}</p>}
         {isAdmin && <div><button disabled={busy}>{busy ? "保存中…" : "保存"}</button></div>}
       </form>
+      <BankAccounts isAdmin={isAdmin} />
       <div className="card stack">
         <h3>スタッフ</h3>
         <div className="tablewrap"><table>

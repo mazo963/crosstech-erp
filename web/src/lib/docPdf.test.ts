@@ -91,6 +91,26 @@ test("宛先の項目を表示しない設定のとき、住所・部署・担�
   }
 });
 
+test("記載項目: ロゴ・社印・FAX・担当・振込先・支払条件・納入場所・有効期限が入り、非表示（null）なら入らない", async () => {
+  const full = { ...(invoice as object), issuer: { ...issuer, fax: "044-111-2222", contact_person: "松田", logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAQCAIAAADrtar6AAAAIElEQVR4nGOQs1kwIIhh1OJRi0ctHrV41OJRi0cthiEAlPZxH3hl3PkAAAAASUVORK5CYII=", seal: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAAGklEQVR4nGM4ISdHNmIY1TyqeVTzqOaB1QwAS6uWUAkEs24AAAAASUVORK5CYII=" },
+    bank: { bank_name: "A銀行", branch_name: "川崎支店", account_type: "普通", account_number: "1234567", account_holder: "カ）クロステック" }, bank_info: null,
+    payment_terms: "末日締め　翌月末日払い", delivery_place: "川崎工場 受入口", customer_po_no: "PO-777" } as never;
+  const q = { ...(full as object), doc_type: "quote", valid_until: "2026-12-31", due_date: "2026-12-20", bank: null, payment_terms: null } as never;
+  const a = await makeDocPdf(full, meta, font), b = await makeDocPdf(full, meta, font), bare = await makeDocPdf(invoice, meta, font);
+  const h = (x: Uint8Array) => createHash("sha256").update(x).digest("hex");
+  assert.equal(h(a.bytes), h(b.bytes)); // 画像を入れても、同じ内容なら同じバイト列
+  assert.notEqual(h(a.bytes), h(bare.bytes));
+  assert.equal(new TextDecoder("latin1").decode(a.bytes).split("/Subtype /Image").length - 1, 2); // ロゴと社印の2枚
+  if (hasPoppler) {
+    const t = text(a.bytes).out!.replace(/[ 　]+/g, " ");
+    for (const s of ["TEL 03-1111-2222 FAX 044-111-2222", "担当 松田", "納入場所: 川崎工場 受入口", "客先注文番号: PO-777", "支払条件: 末日締め 翌月末日払い", "お振込先: A銀行 川崎支店 普通 1234567 カ）クロステック"]) assert.ok(t.includes(s), `見つからない: ${s}\n${t}`);
+    const tq = text((await makeDocPdf(q, meta, font)).bytes).out!.replace(/[ 　]+/g, " ");
+    assert.ok(tq.includes("納期 2026-12-20 有効期限 2026-12-31"), tq);
+    const tb = text(bare.bytes).out!;
+    assert.ok(!tb.includes("FAX") && !tb.includes("担当 ") && !tb.includes("納入場所"));
+  }
+});
+
 test("ファイル名・日本時間", () => {
   assert.equal(pdfFileName({ doc_date: "2026-10-31", doc_no: "INV2610-0001", customer: { name: "A/B:商事" } } as never, 2, 14689), "2026-10-31_14689_A_B_商事_INV2610-0001_v2.pdf");
   assert.equal(jst("2026-10-31T15:30:00Z"), "2026-11-01 00:30");

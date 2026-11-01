@@ -42,6 +42,7 @@ export const customers: MasterDef = {
     { key: "invoice_mail_cc", label: "請求書メール CC" },
     { key: "delivery_mail_to", label: "納品書メール TO", type: "email" },
     { key: "delivery_mail_cc", label: "納品書メール CC" },
+    { key: "default_delivery_place", label: "納入場所（納品書・請求書の既定）" },
     { key: "show_address", label: "帳票に住所を表示（既定）", type: "select", bool: true, options: [["true", "表示する"], ["false", "表示しない（メール送付など）"]] },
     { key: "show_department", label: "帳票に担当部署名を表示（既定）", type: "select", bool: true, options: [["true", "表示する"], ["false", "表示しない"]] },
     { key: "show_contact", label: "帳票に担当者名を表示（既定）", type: "select", bool: true, options: [["true", "表示する"], ["false", "表示しない"]] },

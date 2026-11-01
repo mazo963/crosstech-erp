@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { AddresseeEditor } from "./AddresseeEditor";
+import { DocOptionsEditor } from "./DocOptionsEditor";
 import { DocPreview } from "./DocPreview";
 import { IssueButton } from "./IssueButton";
 
@@ -31,6 +32,7 @@ export function ProjectPreview({ projectId, rev, canWrite }: { projectId: string
       </div>
       <p className="inactive">発行イメージ（保存済みの内容）。発行すると内容が固定され、印刷・PDF保存・交付の記録ができます。</p>
       <AddresseeEditor type={type} sourceId={sourceId} projectId={projectId} canWrite={canWrite} rev={rev + local} onSaved={() => setLocal((n) => n + 1)} />
+      <DocOptionsEditor type={type} sourceId={sourceId} canWrite={canWrite} rev={rev + local} onSaved={() => setLocal((n) => n + 1)} />
       <DocPreview type={type} sourceId={sourceId} rev={rev + local} />
     </div>
   );

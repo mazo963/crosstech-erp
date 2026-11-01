@@ -1,5 +1,5 @@
 import type { IssuedDoc } from "../lib/documents";
-import { DOC_LABEL } from "../lib/documents";
+import { DOC_LABEL, bankText } from "../lib/documents";
 import { jst, yen } from "../lib/format";
 
 /** 発行時に固定した内容から帳票を描く（元データではなく固定内容を使うので、再印刷しても同じになる）。 */
@@ -17,6 +17,7 @@ export function DocumentView({ doc, preview = false }: { doc: IssuedDoc; preview
       {preview && <div className="preview-mark">発行イメージ（未発行）</div>}
       {doc.voided && <div className="stamp">取消済み{doc.void_reason ? `（${doc.void_reason}）` : ""}</div>}
       {copy && <p className="copy-note">【ERP控え・社内用】正式な請求書はマネーフォワードで発行{c.mf_invoice_no ? `（MF請求書番号: ${c.mf_invoice_no}）` : ""}</p>}
+      {c.issuer.logo && <img className="doc-logo" src={c.issuer.logo} alt="" />}
       <h1>{DOC_LABEL[c.doc_type]}{copy ? "（控え）" : ""}</h1>
       <div className="paper-head">
         <div>
@@ -25,6 +26,8 @@ export function DocumentView({ doc, preview = false }: { doc: IssuedDoc; preview
           {(c.customer.department || c.customer.contact_name) && <p>{[c.customer.department, c.customer.contact_name && `${c.customer.contact_name} 様`].filter(Boolean).join("　")}</p>}
           {c.title && <p>件名: {c.title}</p>}
           {c.customer_po_no && <p>客先注文番号: {c.customer_po_no}</p>}
+          {c.delivery_place && <p>納入場所: {c.delivery_place}</p>}
+          {c.payment_terms && <p>支払条件: {c.payment_terms}</p>}
           {c.period_to && <p>対象期間: {c.period_from ?? "初回"} 〜 {c.period_to}</p>}
         </div>
         <div className="issuer">
@@ -32,12 +35,14 @@ export function DocumentView({ doc, preview = false }: { doc: IssuedDoc; preview
           <p>{isInvoice ? "請求日" : c.doc_type === "quote" ? "見積日" : "納品日"} {c.doc_date}</p>
           <p><strong>{c.issuer.company_name}</strong></p>
           {c.issuer.address && <p>{c.issuer.postal_code && `〒${c.issuer.postal_code} `}{c.issuer.address}</p>}
-          {c.issuer.tel && <p>TEL {c.issuer.tel}</p>}
+          {(c.issuer.tel || c.issuer.fax) && <p>{[c.issuer.tel && `TEL ${c.issuer.tel}`, c.issuer.fax && `FAX ${c.issuer.fax}`].filter(Boolean).join("　")}</p>}
+          {c.issuer.contact_person && <p>担当 {c.issuer.contact_person}</p>}
           {c.issuer.invoice_reg_no && <p>登録番号 {c.issuer.invoice_reg_no}</p>}
+          {c.issuer.seal && <img className="doc-seal" src={c.issuer.seal} alt="" />}
         </div>
       </div>
       {isInvoice && <p className="big">ご請求金額 {yen(c.total)}（税込）{c.due_date && <>　お支払期日 {c.due_date}</>}</p>}
-      {c.doc_type === "quote" && <p className="big">お見積金額 {yen(c.total)}（税込）{c.due_date && <>　納期 {c.due_date}</>}</p>}
+      {c.doc_type === "quote" && <p className="big">お見積金額 {yen(c.total)}（税込）{c.due_date && <>　納期 {c.due_date}</>}{c.valid_until && <>　有効期限 {c.valid_until}</>}</p>}
       <table>
         <thead><tr><th>{isInvoice ? "内容" : "製番 / 品名"}</th><th>数量</th><th>単価</th><th>金額</th>{hasRate && <th>税率</th>}</tr></thead>
         <tbody>
@@ -55,7 +60,7 @@ export function DocumentView({ doc, preview = false }: { doc: IssuedDoc; preview
         {c.total != null && <p><strong>合計 {yen(c.total)}</strong></p>}
       </div>
       {hasReduced && <p className="spec">※は軽減税率の対象品目です。</p>}
-      {isInvoice && c.bank_info && <p className="bank">お振込先: {c.bank_info}</p>}
+      {isInvoice && bankText(c) && <p className="bank">お振込先: {bankText(c)}</p>}
       {c.notes && <p className="notes">備考: {c.notes}</p>}
       <p className="foot">{preview ? "発行イメージ（まだ発行されていません）" : `発行 ${jst(doc.issued_at)}　版 ${doc.version}　内容ハッシュ ${doc.content_sha256.slice(0, 12)}`}</p>
     </div>
