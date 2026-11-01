@@ -95,7 +95,7 @@ Supabase CLI を使う場合は `supabase start` → `supabase db reset` でも�
    - 休止防止（`keepalive.yml`）：毎日 `rpc/ping`。**設定が必要**：Variables `SUPABASE_URL`、Secrets `SUPABASE_ANON_KEY`（未設定の間は警告を出して何もしない）
    - デプロイ（`deploy.yml`）：GitHub Pages へ。**手動実行のみ**（ホスティング先が未決のため。§7）。設定が必要：Pages の Source を「GitHub Actions」に、Variables `VITE_SUPABASE_URL`、Secrets `VITE_SUPABASE_ANON_KEY`
 5. [ ] `README.md` のセットアップ手順を、実際に動かして確認する
-6. [ ] ハブ（claude.ai Project）へ変更点レポートを戻し、システム台帳・データ契約・意思決定ログを更新する
+6. [x] ハブへの変更点レポート：`docs/ハブへの変更レポート.md` を作成（システム台帳・データ契約・意思決定ログ・未決事項）。**ハブ（claude.ai Project）への貼り付けは、ユーザーの作業**（開発側からは更新できない）
 
 ## 7. 未決事項（ユーザーに確認が必要。勝手に決めない）
 
